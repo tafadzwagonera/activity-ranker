@@ -37,11 +37,11 @@ export type DailyForecast = {
 export type RankingInput = {
   dailyForecasts: DailyForecast[];
   location: {
-    name: string;
+    admin1?: string;
+    country?: string;
     latitude: number;
     longitude: number;
-    country?: string;
-    admin1?: string;
+    name: string;
   };
   surfSpot?: SurfSpot;
 };
