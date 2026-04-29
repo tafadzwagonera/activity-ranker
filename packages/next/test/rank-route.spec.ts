@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+import { headerNames } from "@activity-ranker/shared";
 
-const createMockRequest = (path: string) =>
-  new Request(`http://localhost:3002${path}`);
+const createMockRequest = (
+  path: string,
+  headers: Record<string, string> = {},
+) =>
+  new Request(`http://localhost:3002${path}`, {
+    headers,
+  });
 
 describe("/api/locations/rank-activities route", () => {
   it("rejects invalid coordinates", async () => {
@@ -62,6 +68,11 @@ describe("/api/locations/rank-activities route", () => {
     const mockFetchBackendRankings = vi
       .fn()
       .mockResolvedValue({ days: [], location: {} });
+    const mockLogger = {
+      error: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+    };
     const { createRankActivitiesRouteHandler } =
       await import("../app/api/locations/rank-activities/route");
     const handler = createRankActivitiesRouteHandler(
@@ -70,22 +81,37 @@ describe("/api/locations/rank-activities route", () => {
         apiInternalKey: "internal-key",
       }),
       mockFetchBackendRankings,
+      mockLogger,
     );
 
     const response = await handler(
       createMockRequest(
         "/api/locations/rank-activities?latitude=-33.9249&longitude=18.4241&transport=graphql",
+        { [headerNames.xRequestId]: "request-123" },
       ),
     );
 
     await expect(response.json()).resolves.toEqual({ days: [], location: {} });
+    expect(response.headers.get(headerNames.xRequestId)).toBe("request-123");
     expect(mockFetchBackendRankings).toHaveBeenCalledWith({
       apiBaseUrl: "http://localhost:3000",
       fetcher: fetch,
       internalKey: "internal-key",
       latitude: -33.9249,
       longitude: 18.4241,
+      requestId: "request-123",
       transport: "graphql",
     });
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "frontend_proxy_request_completed",
+        method: "GET",
+        operation: "rankActivities",
+        path: "/api/locations/rank-activities",
+        requestId: "request-123",
+        statusCode: 200,
+        transport: "graphql",
+      }),
+    );
   });
 });

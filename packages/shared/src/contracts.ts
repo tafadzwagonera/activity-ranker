@@ -59,6 +59,7 @@ export const errorResponseSchema = z.object({
 export const headerNames = {
   xApiKey: "XApiKey",
   xInternalKey: "XInternalKey",
+  xRequestId: "x-request-id",
 } as const;
 
 export type Coordinates = z.infer<typeof coordinatesSchema>;

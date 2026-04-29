@@ -16,6 +16,7 @@ import {
   type LocationSuggestion,
   type RankedActivitiesResponse,
 } from '@activity-ranker/shared';
+import { backendLogger } from '../src/common/observability/backend-logger';
 
 const mockWeatherProvider: WeatherProvider = {
   rankActivitiesByCoordinates(latitude, longitude) {
@@ -106,6 +107,7 @@ const withEnv = (overrides: Record<string, string | undefined>) => {
 describe('App e2e', () => {
   let app: INestApplication;
   let server: Parameters<typeof request>[0];
+  let mockInfoLog: jest.SpyInstance;
 
   beforeAll(async () => {
     withEnv({
@@ -128,13 +130,42 @@ describe('App e2e', () => {
     server = app.getHttpServer() as Parameters<typeof request>[0];
   });
 
+  beforeEach(() => {
+    mockInfoLog = jest
+      .spyOn(backendLogger, 'info')
+      .mockImplementation(() => backendLogger);
+  });
+
   afterAll(async () => {
     await app.close();
     jest.restoreAllMocks();
   });
 
+  afterEach(() => {
+    mockInfoLog.mockRestore();
+  });
+
   it('serves health without auth', async () => {
     await request(server).get('/health').expect(200);
+  });
+
+  it('preserves request correlation headers on REST responses', async () => {
+    const response = await request(server)
+      .get('/health')
+      .set(headerNames.xRequestId, 'request-123')
+      .expect(200);
+
+    expect(response.headers[headerNames.xRequestId]).toBe('request-123');
+    expect(mockInfoLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'backend_request_completed',
+        method: 'GET',
+        path: '/health',
+        requestId: 'request-123',
+        statusCode: 200,
+        transport: 'rest',
+      }),
+    );
   });
 
   it('rejects requests without a supported auth header', async () => {
@@ -274,5 +305,44 @@ describe('App e2e', () => {
       longitude: 18.4241,
       name: 'Cape Town',
     });
+  });
+
+  it('preserves request correlation headers on GraphQL responses', async () => {
+    const response = await request(server)
+      .post('/graphql')
+      .set(headerNames.xInternalKey, 'internal-test-key')
+      .set(headerNames.xRequestId, 'request-graphql-123')
+      .send({
+        query: `
+          query RankActivities($input: CoordinatesInput!) {
+            rankActivitiesByCoordinates(input: $input) {
+              location {
+                name
+              }
+            }
+          }
+        `,
+        variables: {
+          input: {
+            latitude: -33.9249,
+            longitude: 18.4241,
+          },
+        },
+      })
+      .expect(200);
+
+    expect(response.headers[headerNames.xRequestId]).toBe(
+      'request-graphql-123',
+    );
+    expect(mockInfoLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'backend_request_completed',
+        method: 'POST',
+        path: '/graphql',
+        requestId: 'request-graphql-123',
+        statusCode: 200,
+        transport: 'graphql',
+      }),
+    );
   });
 });

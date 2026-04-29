@@ -15,6 +15,13 @@ describe("backend client helpers", () => {
     });
   });
 
+  it("adds x-request-id when proxying correlated backend calls", () => {
+    expect(buildBackendHeaders("internal-key", "request-123")).toEqual({
+      XInternalKey: "internal-key",
+      "x-request-id": "request-123",
+    });
+  });
+
   it("builds backend GraphQL search requests", () => {
     const request = buildBackendSearchRequest({
       apiBaseUrl: "http://localhost:3001",
@@ -51,6 +58,7 @@ describe("backend client helpers", () => {
       fetcher: mockFetcher,
       internalKey: "internal-key",
       query: "Cape Town",
+      requestId: "request-123",
       transport: "rest",
     });
 
@@ -58,7 +66,10 @@ describe("backend client helpers", () => {
     expect(mockFetcher).toHaveBeenCalledWith(
       "http://localhost:3000/locations/search?query=Cape%20Town",
       {
-        headers: { XInternalKey: "internal-key" },
+        headers: {
+          XInternalKey: "internal-key",
+          "x-request-id": "request-123",
+        },
         method: "GET",
       },
     );

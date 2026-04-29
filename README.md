@@ -56,6 +56,16 @@ yarn install --non-interactive
 yarn lefthook install
 ```
 
+## Observability and metrics
+
+The frontend server proxies and the backend are the observability boundaries for this system. Nuxt server routes, Next route handlers, and the Nest backend should emit correlated structured logs with the same `x-request-id` so request flow, failures, and latency can be followed across those boundaries without relying on browser logs.
+
+Structured logs are the source of truth for operational insight. The shared internal log contract standardizes `event`, `requestId`, `path` or operation, `method`, `statusCode`, `durationInMs`, and `transport`, with optional upstream context such as `provider`, `operation`, and `outcome` when a boundary needs to distinguish validation failures, upstream failures, or provider-specific issues.
+
+Metrics will be derived from those structured logs rather than hand-built custom metrics first. Once the log fields are stable, Terraform will provision dashboards and threshold-based alarms from the log data so latency, failure rate, and boundary-specific error patterns stay queryable and consistent across environments.
+
+Alarm handling is operational, not cosmetic. Threshold alarms will notify the on-call engineer, who is expected to investigate the correlated request path, triage the failing boundary, and resolve or escalate the incident based on the structured log evidence.
+
 Useful commands:
 
 - `yarn dev:be` / `yarn dev:fe` / `yarn dev:next` - Starts the NestJS HTTP server on port `3000`, the Nuxt web app on port `3001`, or the Next.js web app on port `3002`.

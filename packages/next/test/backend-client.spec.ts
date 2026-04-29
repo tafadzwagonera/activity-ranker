@@ -12,6 +12,13 @@ describe("next backend client helpers", () => {
     });
   });
 
+  it("adds x-request-id for correlated backend calls", () => {
+    expect(buildBackendHeaders("internal-key", "request-123")).toEqual({
+      XInternalKey: "internal-key",
+      "x-request-id": "request-123",
+    });
+  });
+
   it("builds backend GraphQL search requests", () => {
     const request = buildBackendSearchRequest({
       apiBaseUrl: "http://localhost:3000",

@@ -13,11 +13,23 @@ export type BackendRequest = {
 
 /**
  * @param internalKey Private backend credential held by the Next server.
+ * @param requestId Cross-boundary request correlation ID.
  * @returns Auth headers for server-side backend requests.
  */
-export const buildBackendHeaders = (internalKey: string) => ({
-  [headerNames.xInternalKey]: internalKey,
-});
+export const buildBackendHeaders = (
+  internalKey: string,
+  requestId?: string,
+) => {
+  const headers: Record<string, string> = {
+    [headerNames.xInternalKey]: internalKey,
+  };
+
+  if (requestId) {
+    headers[headerNames.xRequestId] = requestId;
+  }
+
+  return headers;
+};
 
 /**
  * @param options Search request inputs for backend calls.
@@ -127,15 +139,17 @@ export const fetchBackendSearchResults = async ({
   fetcher,
   internalKey,
   query,
+  requestId,
   transport,
 }: {
   apiBaseUrl: string;
   fetcher: typeof fetch;
   internalKey: string;
   query: string;
+  requestId?: string;
   transport: TransportMode;
 }): Promise<LocationSuggestion[]> => {
-  const headers = buildBackendHeaders(internalKey);
+  const headers = buildBackendHeaders(internalKey, requestId);
   const request = buildBackendSearchRequest({ apiBaseUrl, query, transport });
 
   if (transport === "rest") {
@@ -172,6 +186,7 @@ export const fetchBackendRankings = async ({
   internalKey,
   latitude,
   longitude,
+  requestId,
   transport,
 }: {
   apiBaseUrl: string;
@@ -179,9 +194,10 @@ export const fetchBackendRankings = async ({
   internalKey: string;
   latitude: number;
   longitude: number;
+  requestId?: string;
   transport: TransportMode;
 }): Promise<RankedActivitiesResponse> => {
-  const headers = buildBackendHeaders(internalKey);
+  const headers = buildBackendHeaders(internalKey, requestId);
   const request = buildBackendRankingsRequest({
     apiBaseUrl,
     latitude,
