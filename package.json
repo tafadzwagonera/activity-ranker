@@ -1,0 +1,40 @@
+{
+  "name": "activity-ranker",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "workspaces": [
+    "packages/be",
+    "packages/fe",
+    "packages/next",
+    "packages/shared"
+  ],
+  "scripts": {
+    "build": "yarn build:shared && yarn build:be && yarn build:fe && yarn build:next",
+    "build:be": "yarn workspace @activity-ranker/be build",
+    "build:fe": "yarn workspace @activity-ranker/fe build",
+    "build:next": "yarn workspace @activity-ranker/next build",
+    "build:shared": "yarn workspace @activity-ranker/shared build",
+    "clean:coverage": "rm -rf coverage packages/be/coverage packages/fe/coverage packages/next/coverage packages/shared/coverage",
+    "coverage:check": "yarn clean:coverage && yarn workspace @activity-ranker/shared test:ci && yarn workspace @activity-ranker/be test:ci && yarn workspace @activity-ranker/fe test:ci && yarn workspace @activity-ranker/next test:ci && node ./scripts/merge-coverage.mjs --check",
+    "coverage:report": "yarn clean:coverage && yarn workspace @activity-ranker/shared test:ci && yarn workspace @activity-ranker/be test:ci && yarn workspace @activity-ranker/fe test:ci && yarn workspace @activity-ranker/next test:ci && node ./scripts/merge-coverage.mjs",
+    "dev:docker": "docker compose up --build",
+    "dev:docker:down": "docker compose down --volumes --remove-orphans",
+    "dev:be": "yarn workspace @activity-ranker/be dev",
+    "dev:fe": "yarn workspace @activity-ranker/fe dev",
+    "dev:next": "yarn workspace @activity-ranker/next dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "yarn workspaces run lint",
+    "lint:fix": "yarn workspaces run lint:fix",
+    "test": "yarn test:ci",
+    "test:ci": "yarn workspaces run test:ci",
+    "typecheck": "yarn workspaces run typecheck"
+  },
+  "devDependencies": {
+    "@evilmartians/lefthook": "^2.1.6",
+    "istanbul-lib-coverage": "^3.2.2",
+    "istanbul-lib-report": "^3.0.1",
+    "istanbul-reports": "^3.1.7",
+    "prettier": "^3.8.3"
+  }
+}

@@ -1,0 +1,309 @@
+openapi: 3.0.3
+info:
+  title: Activity Ranker API
+  version: 1.0.0
+  description: |
+    Activity Ranker backend for location autocomplete and activity desirability rankings.
+
+    Local invocation:
+    - Docker-first: `docker compose up --build -d`
+    - Node/Yarn fallback: `PORT=3000 yarn dev:be`
+    - If you are resuming from an older compose state, clear volumes once with `docker compose down --volumes --remove-orphans` before starting again
+
+    Authentication:
+    - Authenticated endpoints accept either `XApiKey` or `XInternalKey`
+
+    Shared response contract:
+    - Ranking responses use `{ location, days }`
+    - The current day is returned first in `days`
+
+servers:
+  - url: http://localhost:3000
+    description: Local backend HTTP entrypoint for both Docker and Node/Yarn development
+
+components:
+  securitySchemes:
+    XApiKey:
+      type: apiKey
+      in: header
+      name: XApiKey
+    XInternalKey:
+      type: apiKey
+      in: header
+      name: XInternalKey
+  schemas:
+    LocationSuggestion:
+      type: object
+      required: [id, name, latitude, longitude]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        country:
+          type: string
+        admin1:
+          type: string
+    RankedActivity:
+      type: object
+      required: [activity, score, confidence, reasons]
+      properties:
+        activity:
+          type: string
+          enum: [skiing, surfing, outdoorSightseeing, indoorSightseeing]
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reasons:
+          type: array
+          items:
+            type: string
+    RankedDay:
+      type: object
+      required: [date, activities]
+      properties:
+        date:
+          type: string
+          format: date
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankedActivity"
+    RankedActivitiesResponse:
+      type: object
+      required: [location, days]
+      properties:
+        location:
+          type: object
+          required: [name, latitude, longitude]
+          properties:
+            name:
+              type: string
+            latitude:
+              type: number
+            longitude:
+              type: number
+            country:
+              type: string
+            admin1:
+              type: string
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankedDay"
+    Error:
+      type: object
+      required: [statusCode, code, message, path]
+      properties:
+        statusCode:
+          type: integer
+        code:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+
+paths:
+  /health:
+    get:
+      summary: Service health
+      description: Available without auth and intended for local Docker and Node/Yarn smoke checks.
+      responses:
+        "200":
+          description: Healthy service
+  /locations/search:
+    get:
+      summary: Search for a city or town
+      description: Search suggestions used by the frontend autocomplete and by-name ranking flow.
+      security:
+        - XApiKey: []
+        - XInternalKey: []
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Matching location suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LocationSuggestion"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /locations/{latitude}/{longitude}/rank-activities:
+    get:
+      summary: Rank activities by coordinates
+      description: Returns the shared ranking contract for a coordinate pair.
+      security:
+        - XApiKey: []
+        - XInternalKey: []
+      parameters:
+        - in: path
+          name: latitude
+          required: true
+          schema:
+            type: number
+        - in: path
+          name: longitude
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Ranked activities by day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RankedActivitiesResponse"
+              examples:
+                capeTown:
+                  value:
+                    location:
+                      name: Cape Town
+                      latitude: -33.9249
+                      longitude: 18.4241
+                    days:
+                      - date: "2026-04-29"
+                        activities:
+                          - activity: surfing
+                            score: 0.82
+                            confidence: 0.91
+                            reasons:
+                              - Matched nearby surf spot Muizenberg.
+        "400":
+          description: Invalid coordinates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /locations/by-name/{name}/rank-activities:
+    get:
+      summary: Rank activities by location name
+      description: Resolves a location name first, then returns the shared ranking contract with enriched location metadata when available.
+      security:
+        - XApiKey: []
+        - XInternalKey: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ranked activities by day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RankedActivitiesResponse"
+              examples:
+                capeTown:
+                  value:
+                    location:
+                      name: Cape Town
+                      latitude: -33.9249
+                      longitude: 18.4241
+                      country: South Africa
+                      admin1: Western Cape
+                    days:
+                      - date: "2026-04-29"
+                        activities:
+                          - activity: outdoorSightseeing
+                            score: 0.74
+                            confidence: 0.86
+                            reasons:
+                              - Dry morning and moderate wind speeds.
+        "400":
+          description: Location not found or invalid query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /graphql:
+    post:
+      summary: GraphQL endpoint
+      description: Supports the `searchLocations`, `rankActivitiesByCoordinates`, and `rankActivitiesByName` queries with the same auth headers as the REST routes.
+      security:
+        - XApiKey: []
+        - XInternalKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                variables:
+                  type: object
+                  additionalProperties: true
+            examples:
+              rankActivitiesByCoordinates:
+                value:
+                  query: |
+                    query RankActivities($input: CoordinatesInput!) {
+                      rankActivitiesByCoordinates(input: $input) {
+                        location {
+                          name
+                          latitude
+                          longitude
+                          country
+                          admin1
+                        }
+                        days {
+                          date
+                          activities {
+                            activity
+                            score
+                            confidence
+                            reasons
+                          }
+                        }
+                      }
+                    }
+                  variables:
+                    input:
+                      latitude: -33.9249
+                      longitude: 18.4241
+      responses:
+        "200":
+          description: GraphQL response envelope
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"

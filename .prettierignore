@@ -1,0 +1,8 @@
+.nuxt
+.next
+.output
+.esbuild
+.serverless
+coverage
+dist
+node_modules

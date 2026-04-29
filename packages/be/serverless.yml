@@ -1,0 +1,66 @@
+service: activity-ranker-be
+frameworkVersion: '3'
+
+useDotenv: true
+
+package:
+  excludeDevDependencies: true
+  exclude:
+    - node_modules/**
+
+plugins:
+  - serverless-esbuild
+  - serverless-api-gateway-caching
+
+custom:
+  apiGatewayCaching:
+    enabled: true
+    ttlInSeconds: 1800
+    dataEncrypted: false
+    perKeyInvalidation:
+      requireAuthorization: false
+    endpoints:
+      - path: /locations/{latitude}/{longitude}/rank-activities
+        method: GET
+        cachingEnabled: true
+        cacheKeyParameters:
+          - name: request.path.latitude
+          - name: request.path.longitude
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    platform: node
+    target: node20
+    external:
+      - '@nestjs/microservices'
+      - '@nestjs/websockets'
+      - '@apollo/gateway'
+      - '@apollo/subgraph'
+      - '@apollo/subgraph/package.json'
+      - '@apollo/subgraph/dist/directives'
+      - '@as-integrations/fastify'
+      - 'ts-morph'
+      - 'class-transformer/storage'
+provider:
+  name: aws
+  runtime: nodejs20.x
+  timeout: 10
+  architecture: arm64
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  environment:
+    API_KEY_PUBLIC_VALUES: ${env:API_KEY_PUBLIC_VALUES, 'public-dev-key'}
+    API_KEY_INTERNAL_VALUES: ${env:API_KEY_INTERNAL_VALUES, 'internal-dev-key'}
+    AUTH_WHITELIST_PATH_PREFIXES: ${env:AUTH_WHITELIST_PATH_PREFIXES, '/health,/docs'}
+
+functions:
+  api:
+    handler: dist/lambda.handler
+    events:
+      - http:
+          path: /
+          method: any
+      - http:
+          path: /{proxy+}
+          method: any

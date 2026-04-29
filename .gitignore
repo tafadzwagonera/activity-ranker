@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.env.*
+.nuxt
+.next
+.output
+.esbuild
+.serverless
+.superpowers
+.worktrees
+coverage
+dist
+node_modules
+*.tsbuildinfo
+yarn-error.log

@@ -1,0 +1,82 @@
+name: activity-ranker
+
+x-workspace-service: &workspace-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  init: true
+  working_dir: /workspace
+  volumes:
+    - .:/workspace
+    - activity-ranker-node-modules:/workspace/node_modules
+    - activity-ranker-be-node-modules:/workspace/packages/be/node_modules
+    - activity-ranker-fe-node-modules:/workspace/packages/fe/node_modules
+    - activity-ranker-next-node-modules:/workspace/packages/next/node_modules
+    - activity-ranker-shared-node-modules:/workspace/packages/shared/node_modules
+  environment:
+    YARN_CACHE_FOLDER: /tmp/yarn-cache
+
+services:
+  be:
+    <<: *workspace-service
+    command:
+      - sh
+      - -lc
+      - yarn workspace @activity-ranker/be dev
+    environment:
+      API_KEY_INTERNAL_VALUES: internal-dev-key
+      API_KEY_PUBLIC_VALUES: public-dev-key
+      AUTH_WHITELIST_PATH_PREFIXES: /health,/docs
+      PORT: "3000"
+      YARN_CACHE_FOLDER: /tmp/yarn-cache
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))
+      interval: 5s
+      retries: 20
+      start_period: 10s
+      timeout: 5s
+    ports:
+      - "3000:3000"
+
+  fe:
+    <<: *workspace-service
+    command:
+      - sh
+      - -lc
+      - yarn workspace @activity-ranker/fe dev --host 0.0.0.0 --port 3001
+    depends_on:
+      be:
+        condition: service_healthy
+    environment:
+      NUXT_API_BASE_URL: http://be:3000
+      NUXT_API_INTERNAL_KEY: internal-dev-key
+      YARN_CACHE_FOLDER: /tmp/yarn-cache
+    ports:
+      - "3001:3001"
+
+  next:
+    <<: *workspace-service
+    command:
+      - sh
+      - -lc
+      - yarn workspace @activity-ranker/next dev --hostname 0.0.0.0 --port 3002
+    depends_on:
+      be:
+        condition: service_healthy
+    environment:
+      NEXT_API_BASE_URL: http://be:3000
+      NEXT_API_INTERNAL_KEY: internal-dev-key
+      YARN_CACHE_FOLDER: /tmp/yarn-cache
+    ports:
+      - "3002:3002"
+
+volumes:
+  activity-ranker-node-modules:
+  activity-ranker-be-node-modules:
+  activity-ranker-fe-node-modules:
+  activity-ranker-next-node-modules:
+  activity-ranker-shared-node-modules:

@@ -1,0 +1,2 @@
+export const WEATHER_PROVIDER = Symbol('WEATHER_PROVIDER');
+export const GEOCODING_PROVIDER = Symbol('GEOCODING_PROVIDER');

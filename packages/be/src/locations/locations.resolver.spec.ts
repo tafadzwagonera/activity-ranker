@@ -1,0 +1,72 @@
+import type { RankedActivitiesResponse } from '@activity-ranker/shared';
+
+import { LocationsResolver } from './locations.resolver';
+import { LocationsService } from './locations.service';
+
+describe('LocationsResolver', () => {
+  const mockSearchLocations = jest.fn();
+  const mockRankActivitiesByCoordinates = jest.fn();
+  const mockRankActivitiesByName = jest.fn();
+
+  let resolver: LocationsResolver;
+
+  beforeEach(() => {
+    mockSearchLocations.mockReset();
+    mockRankActivitiesByCoordinates.mockReset();
+    mockRankActivitiesByName.mockReset();
+
+    resolver = new LocationsResolver({
+      rankActivitiesByCoordinates: mockRankActivitiesByCoordinates,
+      rankActivitiesByName: mockRankActivitiesByName,
+      searchLocations: mockSearchLocations,
+    } as unknown as LocationsService);
+  });
+
+  it('forwards graphql searches to the service', async () => {
+    mockSearchLocations.mockResolvedValue([{ id: 1, name: 'Cape Town' }]);
+
+    await resolver.searchLocations('Cape Town');
+
+    expect(mockSearchLocations).toHaveBeenCalledWith('Cape Town');
+  });
+
+  it('parses graphql coordinates using the shared schema before ranking', async () => {
+    const response: RankedActivitiesResponse = {
+      location: {
+        latitude: -33.9249,
+        longitude: 18.4241,
+        name: 'Cape Town',
+      },
+      days: [],
+    };
+    mockRankActivitiesByCoordinates.mockResolvedValue(response);
+
+    const result = await resolver.rankActivitiesByCoordinates({
+      latitude: -33.9249,
+      longitude: 18.4241,
+    });
+
+    expect(result).toBe(response);
+    expect(mockRankActivitiesByCoordinates).toHaveBeenCalledWith({
+      latitude: -33.9249,
+      longitude: 18.4241,
+    });
+  });
+
+  it('forwards graphql by-name rankings to the service', async () => {
+    mockRankActivitiesByName.mockResolvedValue({
+      days: [],
+      location: {
+        latitude: -33.9249,
+        longitude: 18.4241,
+        name: 'Cape Town',
+      },
+    });
+
+    await resolver.rankActivitiesByName({
+      name: 'Cape Town',
+    });
+
+    expect(mockRankActivitiesByName).toHaveBeenCalledWith('Cape Town');
+  });
+});
