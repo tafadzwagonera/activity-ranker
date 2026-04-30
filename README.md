@@ -14,7 +14,7 @@ Yarn classic monorepo for a Serverless-ready NestJS back end, parallel Nuxt and 
 The lowest-friction first run is Docker:
 
 ```bash
-cd /Users/tafadzwagonera/Projects/activity-ranker
+cd /(Users|home)/<username>/path/to/activity-ranker
 docker compose up --build -d
 ```
 
@@ -46,7 +46,7 @@ yarn dev:docker:down
 Use this path when you do not want Docker:
 
 ```bash
-cd /Users/tafadzwagonera/Projects/activity-ranker
+cd /(Users|home)/<username>/path/to/activity-ranker
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 nvm use
@@ -55,6 +55,26 @@ corepack prepare yarn@1.22.22 --activate
 yarn install --non-interactive
 yarn lefthook install
 ```
+
+## Local ports and invocation patterns
+
+- `yarn dev:be` runs the Nest HTTP server directly, not `serverless offline`.
+- The backend HTTP entrypoint defaults to `http://localhost:3000`.
+- Use `PORT=3000 yarn dev:be` to override the backend HTTP port for local development.
+- Use `PORT=3000 yarn workspace @activity-ranker/be start` only when running the built Nest app directly.
+- `NUXT_API_BASE_URL` only needs to be set when the frontend should target a non-default backend host or port.
+- `NUXT_API_INTERNAL_KEY` is optional for local development because the frontend defaults to `internal-dev-key`.
+- `NEXT_API_BASE_URL` only needs to be set when the Next.js mirror should target a non-default backend host or port.
+- `NEXT_API_INTERNAL_KEY` is optional for local development because the Next.js mirror defaults to `internal-dev-key`.
+- `docker compose up --build -d` publishes the Next.js mirror on `http://localhost:3002`, the Nuxt app on `http://localhost:3001`, and wires both server-side proxies to `http://be:3000`.
+- The compose stack no longer depends on a runtime `deps` service; if you are resuming from an older dirty stack, clear volumes with `docker compose down --volumes --remove-orphans` before restarting.
+
+## Frontend dependency notes
+
+- `@activity-ranker/fe` stays on Tailwind CSS `3.4.x` because it uses the Nuxt Tailwind module path.
+- `@activity-ranker/next` uses Tailwind CSS `4.2.x` with `@tailwindcss/postcss`.
+- The root workspace uses Yarn `nohoist` rules so each frontend keeps its own Tailwind major version instead of sharing one hoisted install.
+- The root `tailwindcss` dependency remains on `3.4.x` so Nuxt type generation and the Nuxt Tailwind module can still resolve the package from the workspace root.
 
 ## Observability and metrics
 
@@ -346,6 +366,182 @@ yarn coverage:report
 
 Current caveat: `scripts/merge-coverage.mjs` currently omits `packages/next/coverage/coverage-final.json`, so the root merged report does not yet include Next coverage even though the root command executes the Next suite.
 
+### What each suite proves
+
+- Shared contract tests prove frontend and backend code agree on `coordinatesSchema`, `transportModeSchema`, `rankedActivitiesResponseSchema`, and `headerNames`.
+- Backend unit tests isolate domain behavior in `LocationsService`, `LocationsController`, `LocationsResolver`, auth, validation, and weather-ranking helpers with mocks.
+- Backend e2e tests boot `AppModule`, override external providers, and exercise real REST and GraphQL HTTP paths through `supertest`.
+- Nuxt node-side tests execute real H3 handlers with synthetic events to verify validation, config handling, upstream proxying, correlation headers, and structured logs.
+- Nuxt DOM tests mount real Vue code in `happy-dom` to verify reactive state and rendered output without a browser.
+- Nuxt Playwright tests verify the user journey end-to-end at the browser boundary by intercepting `/api/locations/*`.
+- Next tests stay server-first: route handlers receive real `Request` objects, and helper tests assert the exact outbound payloads and public response envelopes.
+
+### Call stacks
+
+Shared schema validation:
+
+```text
+## Call Stack: rankedActivitiesResponseSchema.parse(payload)
+rankedActivitiesResponseSchema.parse(payload)
+  └── Zod validation pipeline
+      ├── validate location fields
+      ├── validate each day entry
+      └── validate each activity score/confidence/reasons tuple
+```
+
+Nuxt browser-to-backend request path:
+
+```text
+## Call Stack: useLocationSearch("Cape Town")
+useLocationSearch(selectedTransport)
+  └── watch([query, transport], ...)
+      └── useDebounceFn(async search, 350)
+          └── fetchSearchResults({ query: "Cape Town", transport: "rest" })
+              └── GET /api/locations/search?query=Cape%20Town&transport=rest
+                  └── createSearchHandler(...)
+                      └── defineEventHandler(async (event) => ...)
+                          ├── createProxyRequestContext({ event, operation: "searchLocations", transport })
+                          ├── fetchBackendSearchResults(...)
+                          │   ├── buildBackendHeaders(internalKey, requestId)
+                          │   └── buildBackendSearchRequest(...)
+                          └── logProxyRequestCompleted(...) or logProxyRequestFailed(...)
+```
+
+Next App Router request path:
+
+```text
+## Call Stack: createRankActivitiesRouteHandler(request)
+createRankActivitiesRouteHandler(...)
+  └── async (request: Request) => ...
+      ├── coordinatesSchema.safeParse(...)
+      ├── createProxyRequestContext({ operation: "rankActivities", request, transport })
+      ├── fetchBackendRankings(...)
+      │   ├── buildBackendHeaders(internalKey, requestId)
+      │   └── buildBackendRankingsRequest(...)
+      ├── Response.json(rankings, { headers: { "x-request-id": requestId } })
+      └── logProxyRequestCompleted(...) or logProxyRequestFailed(...)
+```
+
+Nest backend e2e path:
+
+```text
+## Call Stack: request(server).get("/locations/.../rank-activities")
+request(server)
+  └── AppModule
+      ├── RequestObservabilityMiddleware.use(request, response, next)
+      │   ├── request.requestId = resolveRequestId(request)
+      │   ├── request.startTimeInMs = Date.now()
+      │   ├── response.setHeader("x-request-id", requestId)
+      │   └── next()
+      │       ├── ApiKeyGuard.canActivate(...)
+      │       └── REST controller or GraphQL resolver
+      │           ├── LocationsController.rankActivities(...)
+      │           │   └── parseCoordinates(...)
+      │           │       └── LocationsService.rankActivitiesByCoordinates(...)
+      │           └── LocationsResolver.rankActivitiesByCoordinates(...)
+      │               └── coordinatesSchema.parse(input)
+      │                   └── LocationsService.rankActivitiesByCoordinates(...)
+      └── response.on("finish", ...)
+          └── backendLogger.info(...) or backendLogger.error(...)
+```
+
+### Program state
+
+Nuxt search composable state:
+
+```json
+useLocationSearch {
+  error: RefImpl {
+    _value: null
+  },
+  loading: RefImpl {
+    _value: false
+  },
+  query: RefImpl {
+    _value: "Cape Town"
+  },
+  results: RefImpl {
+    _value: [
+      {
+        id: 1,
+        name: "Cape Town",
+        latitude: -33.9249,
+        longitude: 18.4241,
+        country: "South Africa",
+        admin1: "Western Cape"
+      }
+    ]
+  }
+}
+```
+
+Nuxt rankings composable after a failed fetch:
+
+```json
+useActivityRankings {
+  data: RefImpl {
+    _value: null
+  },
+  error: RefImpl {
+    _value: "Unable to load activity rankings."
+  },
+  loading: RefImpl {
+    _value: false
+  }
+}
+```
+
+Proxy request context in both frontends:
+
+```json
+ProxyRequestContext {
+  method: "GET",
+  operation: "searchLocations" | "rankActivities",
+  path: "/api/locations/search" | "/api/locations/rank-activities",
+  requestId: "request-123",
+  startTimeInMs: 1760000000000,
+  transport: "rest" | "graphql" | "unknown"
+}
+```
+
+Backend middleware state after correlation is attached:
+
+```json
+ObservabilityRequest {
+  method: "GET" | "POST",
+  originalUrl: "/graphql" | "/locations/-33.9249/18.4241/rank-activities",
+  requestId: "request-123",
+  startTimeInMs: 1760000000000,
+  headers: {
+    "x-api-key": "public-test-key",
+    "x-internal-key": "internal-test-key",
+    "x-request-id": "request-123"
+  }
+}
+```
+
+Backend service state in unit tests:
+
+```json
+LocationsService {
+  weatherProvider: {
+    rankActivitiesByCoordinates: mockFn()
+  },
+  geocodingProvider: {
+    searchLocations: mockFn()
+  }
+}
+```
+
+### Data flow under test
+
+- Browser-side state starts in Vue refs such as `query`, `results`, `selectedTransport`, `data`, `error`, and `loading`.
+- The browser never talks to Nest directly. It always builds same-origin `/api/locations/*` requests first.
+- The Nuxt or Next server boundary validates the request, resolves `requestId`, chooses REST vs GraphQL, injects `XInternalKey`, and forwards the upstream request.
+- Nest middleware stores `requestId` and timing state before auth and controller or resolver execution continue.
+- Controllers and resolvers normalize input, then delegate to `LocationsService`, which delegates to mocked or real geocoding and weather providers.
+- Tests assert the state at the point where each layer owns correctness: refs in composable and DOM tests, proxy envelopes in frontend handler tests, and headers plus payload shape in backend e2e tests.
+
 ## Rank Scoring algorithm
 
 The ranking flow starts with coordinates and ends with a sorted daily list of `ActivityScore` objects:
@@ -524,195 +720,6 @@ Final ranked activity entry returned to callers:
   "reasons": ["Matched nearby surf spot Muizenberg."]
 }
 ```
-
-### What each suite proves
-
-- Shared contract tests prove frontend and backend code agree on `coordinatesSchema`, `transportModeSchema`, `rankedActivitiesResponseSchema`, and `headerNames`.
-- Backend unit tests isolate domain behavior in `LocationsService`, `LocationsController`, `LocationsResolver`, auth, validation, and weather-ranking helpers with mocks.
-- Backend e2e tests boot `AppModule`, override external providers, and exercise real REST and GraphQL HTTP paths through `supertest`.
-- Nuxt node-side tests execute real H3 handlers with synthetic events to verify validation, config handling, upstream proxying, correlation headers, and structured logs.
-- Nuxt DOM tests mount real Vue code in `happy-dom` to verify reactive state and rendered output without a browser.
-- Nuxt Playwright tests verify the user journey end-to-end at the browser boundary by intercepting `/api/locations/*`.
-- Next tests stay server-first: route handlers receive real `Request` objects, and helper tests assert the exact outbound payloads and public response envelopes.
-
-### Call stacks
-
-Shared schema validation:
-
-```text
-## Call Stack: rankedActivitiesResponseSchema.parse(payload)
-rankedActivitiesResponseSchema.parse(payload)
-  └── Zod validation pipeline
-      ├── validate location fields
-      ├── validate each day entry
-      └── validate each activity score/confidence/reasons tuple
-```
-
-Nuxt browser-to-backend request path:
-
-```text
-## Call Stack: useLocationSearch("Cape Town")
-useLocationSearch(selectedTransport)
-  └── watch([query, transport], ...)
-      └── useDebounceFn(async search, 350)
-          └── fetchSearchResults({ query: "Cape Town", transport: "rest" })
-              └── GET /api/locations/search?query=Cape%20Town&transport=rest
-                  └── createSearchHandler(...)
-                      └── defineEventHandler(async (event) => ...)
-                          ├── createProxyRequestContext({ event, operation: "searchLocations", transport })
-                          ├── fetchBackendSearchResults(...)
-                          │   ├── buildBackendHeaders(internalKey, requestId)
-                          │   └── buildBackendSearchRequest(...)
-                          └── logProxyRequestCompleted(...) or logProxyRequestFailed(...)
-```
-
-Next App Router request path:
-
-```text
-## Call Stack: createRankActivitiesRouteHandler(request)
-createRankActivitiesRouteHandler(...)
-  └── async (request: Request) => ...
-      ├── coordinatesSchema.safeParse(...)
-      ├── createProxyRequestContext({ operation: "rankActivities", request, transport })
-      ├── fetchBackendRankings(...)
-      │   ├── buildBackendHeaders(internalKey, requestId)
-      │   └── buildBackendRankingsRequest(...)
-      ├── Response.json(rankings, { headers: { "x-request-id": requestId } })
-      └── logProxyRequestCompleted(...) or logProxyRequestFailed(...)
-```
-
-Nest backend e2e path:
-
-```text
-## Call Stack: request(server).get("/locations/.../rank-activities")
-request(server)
-  └── AppModule
-      ├── RequestObservabilityMiddleware.use(request, response, next)
-      │   ├── request.requestId = resolveRequestId(request)
-      │   ├── request.startTimeInMs = Date.now()
-      │   ├── response.setHeader("x-request-id", requestId)
-      │   └── next()
-      │       ├── ApiKeyGuard.canActivate(...)
-      │       └── REST controller or GraphQL resolver
-      │           ├── LocationsController.rankActivities(...)
-      │           │   └── parseCoordinates(...)
-      │           │       └── LocationsService.rankActivitiesByCoordinates(...)
-      │           └── LocationsResolver.rankActivitiesByCoordinates(...)
-      │               └── coordinatesSchema.parse(input)
-      │                   └── LocationsService.rankActivitiesByCoordinates(...)
-      └── response.on("finish", ...)
-          └── backendLogger.info(...) or backendLogger.error(...)
-```
-
-### Program state
-
-Nuxt search composable state:
-
-```json
-useLocationSearch {
-  error: RefImpl {
-    _value: null
-  },
-  loading: RefImpl {
-    _value: false
-  },
-  query: RefImpl {
-    _value: "Cape Town"
-  },
-  results: RefImpl {
-    _value: [
-      {
-        id: 1,
-        name: "Cape Town",
-        latitude: -33.9249,
-        longitude: 18.4241,
-        country: "South Africa",
-        admin1: "Western Cape"
-      }
-    ]
-  }
-}
-```
-
-Nuxt rankings composable after a failed fetch:
-
-```json
-useActivityRankings {
-  data: RefImpl {
-    _value: null
-  },
-  error: RefImpl {
-    _value: "Unable to load activity rankings."
-  },
-  loading: RefImpl {
-    _value: false
-  }
-}
-```
-
-Proxy request context in both frontends:
-
-```json
-ProxyRequestContext {
-  method: "GET",
-  operation: "searchLocations" | "rankActivities",
-  path: "/api/locations/search" | "/api/locations/rank-activities",
-  requestId: "request-123",
-  startTimeInMs: 1760000000000,
-  transport: "rest" | "graphql" | "unknown"
-}
-```
-
-Backend middleware state after correlation is attached:
-
-```json
-ObservabilityRequest {
-  method: "GET" | "POST",
-  originalUrl: "/graphql" | "/locations/-33.9249/18.4241/rank-activities",
-  requestId: "request-123",
-  startTimeInMs: 1760000000000,
-  headers: {
-    "x-api-key": "public-test-key",
-    "x-internal-key": "internal-test-key",
-    "x-request-id": "request-123"
-  }
-}
-```
-
-Backend service state in unit tests:
-
-```json
-LocationsService {
-  weatherProvider: {
-    rankActivitiesByCoordinates: mockFn()
-  },
-  geocodingProvider: {
-    searchLocations: mockFn()
-  }
-}
-```
-
-### Data flow under test
-
-- Browser-side state starts in Vue refs such as `query`, `results`, `selectedTransport`, `data`, `error`, and `loading`.
-- The browser never talks to Nest directly. It always builds same-origin `/api/locations/*` requests first.
-- The Nuxt or Next server boundary validates the request, resolves `requestId`, chooses REST vs GraphQL, injects `XInternalKey`, and forwards the upstream request.
-- Nest middleware stores `requestId` and timing state before auth and controller or resolver execution continue.
-- Controllers and resolvers normalize input, then delegate to `LocationsService`, which delegates to mocked or real geocoding and weather providers.
-- Tests assert the state at the point where each layer owns correctness: refs in composable and DOM tests, proxy envelopes in frontend handler tests, and headers plus payload shape in backend e2e tests.
-
-## Local ports and invocation patterns
-
-- `yarn dev:be` runs the Nest HTTP server directly, not `serverless offline`.
-- The backend HTTP entrypoint defaults to `http://localhost:3000`.
-- Use `PORT=3000 yarn dev:be` to override the backend HTTP port for local development.
-- Use `PORT=3000 yarn workspace @activity-ranker/be start` only when running the built Nest app directly.
-- `NUXT_API_BASE_URL` only needs to be set when the frontend should target a non-default backend host or port.
-- `NUXT_API_INTERNAL_KEY` is optional for local development because the frontend defaults to `internal-dev-key`.
-- `NEXT_API_BASE_URL` only needs to be set when the Next.js mirror should target a non-default backend host or port.
-- `NEXT_API_INTERNAL_KEY` is optional for local development because the Next.js mirror defaults to `internal-dev-key`.
-- `docker compose up --build -d` publishes the Next.js mirror on `http://localhost:3002`, the Nuxt app on `http://localhost:3001`, and wires both server-side proxies to `http://be:3000`.
-- The compose stack no longer depends on a runtime `deps` service; if you are resuming from an older dirty stack, clear volumes with `docker compose down --volumes --remove-orphans` before restarting.
 
 ## Runtime behavior
 
