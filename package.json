@@ -2,12 +2,20 @@
   "name": "activity-ranker",
   "private": true,
   "packageManager": "yarn@1.22.22",
-  "workspaces": [
-    "packages/be",
-    "packages/fe",
-    "packages/next",
-    "packages/shared"
-  ],
+  "workspaces": {
+    "packages": [
+      "packages/be",
+      "packages/fe",
+      "packages/next",
+      "packages/shared"
+    ],
+    "nohoist": [
+      "**/tailwindcss",
+      "**/tailwindcss/**",
+      "**/@tailwindcss/postcss",
+      "**/@tailwindcss/postcss/**"
+    ]
+  },
   "scripts": {
     "build": "yarn build:shared && yarn build:be && yarn build:fe && yarn build:next",
     "build:be": "yarn workspace @activity-ranker/be build",
@@ -30,14 +38,12 @@
     "test:ci": "yarn workspaces run test:ci",
     "typecheck": "yarn workspaces run typecheck"
   },
-  "resolutions": {
-    "tailwindcss": "^3.4.0"
-  },
   "devDependencies": {
     "@evilmartians/lefthook": "^2.1.6",
     "istanbul-lib-coverage": "^3.2.2",
     "istanbul-lib-report": "^3.0.1",
     "istanbul-reports": "^3.1.7",
-    "prettier": "^3.8.3"
+    "prettier": "^3.8.3",
+    "tailwindcss": "^3.4.19"
   }
 }

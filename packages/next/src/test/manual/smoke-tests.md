@@ -2,13 +2,15 @@
 
 1. Start the backend with `API_KEY_PUBLIC_VALUES=public-dev-key API_KEY_INTERNAL_VALUES=internal-dev-key PORT=3000 yarn dev:be`.
 2. Start the Next app with `NEXT_API_INTERNAL_KEY=internal-dev-key yarn dev:next`.
-3. Open `http://localhost:3002` and confirm the Venture heading, transport toggle, and search input render.
-4. Type at least three characters for a city or town and confirm suggestions appear.
-5. Select one suggestion and confirm rankings load.
-6. Try selecting a different city without clearing the current one and confirm the UI shows the single-location error.
-7. Switch from `REST` to `GraphQL` and confirm rankings reload without leaving the page.
-8. Toggle the theme and confirm the visual theme persists after refresh.
-9. Trigger a bad `NEXT_API_INTERNAL_KEY` locally and confirm the UI shows an error state instead of hanging.
+3. Run `curl -I http://127.0.0.1:3002` and confirm the response is `200 OK`.
+4. Open `http://localhost:3002` and confirm the Venture heading, transport toggle, and search input render.
+5. Reload the page and confirm Next does not return a Tailwind or PostCSS startup error.
+6. Type at least three characters for a city or town and confirm suggestions appear.
+7. Select one suggestion and confirm rankings load.
+8. Try selecting a different city without clearing the current one and confirm the UI shows the single-location error.
+9. Switch from `REST` to `GraphQL` and confirm rankings reload without leaving the page.
+10. Toggle the theme and confirm the visual theme persists after refresh.
+11. Trigger a bad `NEXT_API_INTERNAL_KEY` locally and confirm the UI shows an error state instead of hanging.
 
 ## Proxy observability
 

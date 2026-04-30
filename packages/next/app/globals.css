@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@config "../tailwind.config.js";
+@import "tailwindcss";
 
 /* CSS variable theming system — :root defines the source of truth for all design tokens.
    Tailwind extends its theme with var(--token) references so utilities like text-gold

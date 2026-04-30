@@ -10,6 +10,7 @@ describe("frontend config", () => {
 
   it("keeps the Venture page metadata configured", () => {
     expect(nuxtConfig.app?.head?.title).toBe("Venture Activity Forecast");
+    expect(nuxtConfig.css).toContain("~/assets/css/main.css");
     expect(nuxtConfig.ssr).toBe(false);
   });
 

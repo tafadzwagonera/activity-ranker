@@ -24,7 +24,7 @@ export default defineNuxtConfig({
     },
   },
   compatibilityDate: "2026-04-28",
-  css: ["~/app/assets/css/main.css"],
+  css: ["~/assets/css/main.css"],
   devtools: { enabled: true },
   modules: ["@vueuse/nuxt", "@nuxtjs/tailwindcss"],
   runtimeConfig: {

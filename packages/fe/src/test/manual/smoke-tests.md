@@ -5,6 +5,12 @@
 1. Start the full stack with `docker compose up --build` or run `API_KEY_PUBLIC_VALUES=public-dev-key API_KEY_INTERNAL_VALUES=internal-dev-key yarn dev:be` and `yarn dev:fe`.
 2. Open `http://localhost:3001` and confirm the Venture page, transport toggle, and search input render.
 
+## Startup and reachability
+
+1. Run `curl -I http://127.0.0.1:3001` and confirm the response is `200 OK`.
+2. Reload the page and confirm Nuxt does not log a CSS import resolution error for `~/assets/css/main.css`.
+3. Confirm the landing page renders without a blank screen or server error overlay.
+
 ## Search and selection
 
 1. Type at least three characters and confirm autocomplete suggestions appear.
