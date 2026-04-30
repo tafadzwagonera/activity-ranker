@@ -346,6 +346,185 @@ yarn coverage:report
 
 Current caveat: `scripts/merge-coverage.mjs` currently omits `packages/next/coverage/coverage-final.json`, so the root merged report does not yet include Next coverage even though the root command executes the Next suite.
 
+## Rank Scoring algorithm
+
+The ranking flow starts with coordinates and ends with a sorted daily list of `ActivityScore` objects:
+
+1. `surfSpots` in `packages/be/src/integrations/weather/surf-spots.config.ts` defines the curated coastal metadata used only for surfing.
+2. `SurfSpotsService.resolveNearestSpot(...)` converts the incoming latitude and longitude into a nearest configured `SurfSpot | undefined`, using a 25 km cutoff.
+3. `OpenMeteoProvider.rankActivitiesByCoordinates(...)` fetches forecast and marine hourly arrays from Open-Meteo, groups them into `DailyForecast[]`, builds the location object, and passes all of that into `rankingService.rankForecast(...)`.
+4. `RankingService.rankForecast(...)` sorts days, then ranks every supported activity for each day by calling `rankActivity(...)`.
+5. `rankActivity(...)` scores every hour through `scoreHourForActivity(...)`, averages those hourly scores into the final daily `score`, measures volatility with `standardDeviation(...)`, and derives `confidence`.
+6. `scoreHourForActivity(...)` selects the weather rules for each activity. Surfing is the most nuanced path because it combines wave height, period, direction, wind, and temperature, and it changes behavior when no nearby configured surf spot is available.
+7. Helper functions such as `weightedScore(...)`, `rangeScore(...)`, `minScore(...)`, `maxScore(...)`, and `angleScore(...)` turn raw measurements into normalized `0..1` score parts before the final daily ranking is sorted descending.
+
+Rank-scoring call path:
+
+```text
+surfSpots
+└── SurfSpotsService.resolveNearestSpot(latitude, longitude)
+    ├── surfSpots.map(...)
+    │   └── distanceInKm(...)
+    │       └── toRadians(...)
+    ├── .filter(({ distance }) => distance <= 25)
+    └── .sort(...)[0]?.spot
+
+OpenMeteoProvider.rankActivitiesByCoordinates(latitude, longitude)
+├── fetch(forecastUrl)
+├── fetch(marineUrl)
+├── groupHourlyForecasts(forecast, marine)
+│   └── DailyForecast[]
+└── rankingService.rankForecast({
+    dailyForecasts,
+    location,
+    surfSpot
+  })
+```
+
+```text
+RankingService.rankForecast(input)
+├── input.dailyForecasts
+│   └── .sort((left, right) => left.date.localeCompare(right.date))
+└── activityIds.map((activity) => rankActivity(activity, day.hourly, input.surfSpot))
+    └── RankingService.rankActivity(activity, hourlyForecasts, surfSpot)
+        ├── hourlyForecasts.map((hourly) => scoreHourForActivity(activity, hourly, surfSpot))
+        ├── average(hourlyScores)
+        ├── standardDeviation(hourlyScores)
+        │   ├── average(values)
+        │   └── average(values.map((value) => (value - mean) ** 2))
+        ├── buildReasons(activity, hourlyForecasts, surfSpot)
+        └── returns ActivityScore
+```
+
+```text
+RankingService.scoreHourForActivity("surfing", hourly, surfSpot)
+├── angleScore(hourly.waveDirection, surfSpot.idealWaveDirection, surfSpot.waveToleranceDegrees)
+│   └── angleDifference(actual, ideal)
+├── angleScore(hourly.windDirection10m, surfSpot.offshoreWindDirection, surfSpot.windToleranceDegrees)
+│   └── angleDifference(actual, ideal)
+├── weightedScore(parts, weights)
+│   ├── rangeScore(hourly.temperature2m, [18, 30])
+│   ├── rangeScore(hourly.waveHeight, [1, 3])
+│   ├── minScore(hourly.wavePeriod, 8, 14)
+│   ├── maxScore(hourly.windSpeed10m, 10, 24)
+│   ├── waveDirectionScore
+│   └── windDirectionScore
+└── clamp(baseSurfingScore + 0.08) when surfSpot exists
+```
+
+Representative runtime state:
+
+Configured surf spot entry:
+
+```json
+{
+  "name": "Muizenberg",
+  "latitude": -34.107,
+  "longitude": 18.47,
+  "idealWaveDirection": 180,
+  "offshoreWindDirection": 315,
+  "waveToleranceDegrees": 75,
+  "windToleranceDegrees": 60
+}
+```
+
+Resolved nearest spot for a Cape Town area request:
+
+```json
+{
+  "surfSpot": {
+    "name": "Muizenberg",
+    "latitude": -34.107,
+    "longitude": 18.47,
+    "idealWaveDirection": 180,
+    "offshoreWindDirection": 315,
+    "waveToleranceDegrees": 75,
+    "windToleranceDegrees": 60
+  }
+}
+```
+
+`RankingInput` assembled by `OpenMeteoProvider` before scoring:
+
+```json
+{
+  "location": {
+    "name": "-33.9249, 18.4241",
+    "latitude": -33.9249,
+    "longitude": 18.4241
+  },
+  "surfSpot": {
+    "name": "Muizenberg",
+    "latitude": -34.107,
+    "longitude": 18.47,
+    "idealWaveDirection": 180,
+    "offshoreWindDirection": 315,
+    "waveToleranceDegrees": 75,
+    "windToleranceDegrees": 60
+  },
+  "dailyForecasts": [
+    {
+      "date": "2026-05-01",
+      "hourly": [
+        {
+          "cloudCover": 30,
+          "precipitation": 0.2,
+          "snowfall": 0,
+          "snowDepth": 0,
+          "temperature2m": 22,
+          "uvIndex": 5.8,
+          "visibility": 14000,
+          "waveDirection": 190,
+          "waveHeight": 1.8,
+          "wavePeriod": 11,
+          "weatherCode": 2,
+          "windDirection10m": 320,
+          "windSpeed10m": 9
+        }
+      ]
+    }
+  ]
+}
+```
+
+Representative per-hour surfing score parts after normalization:
+
+```json
+{
+  "activity": "surfing",
+  "hourly": {
+    "temperature2m": 22,
+    "waveDirection": 190,
+    "waveHeight": 1.8,
+    "wavePeriod": 11,
+    "windDirection10m": 320,
+    "windSpeed10m": 9
+  },
+  "parts": {
+    "temperature2m": 1,
+    "waveDirection": 0.87,
+    "waveHeight": 1,
+    "wavePeriod": 0.5,
+    "windDirection10m": 0.92,
+    "windSpeed10m": 1
+  },
+  "baseSurfingScore": 0.88,
+  "surfSpotBonusApplied": true,
+  "hourScore": 0.96
+}
+```
+
+Final ranked activity entry returned to callers:
+
+```json
+{
+  "activity": "surfing",
+  "score": 0.82,
+  "confidence": 0.9,
+  "reasons": ["Matched nearby surf spot Muizenberg."]
+}
+```
+
 ### What each suite proves
 
 - Shared contract tests prove frontend and backend code agree on `coordinatesSchema`, `transportModeSchema`, `rankedActivitiesResponseSchema`, and `headerNames`.
@@ -590,10 +769,12 @@ AI assistance was used for:
 - identifying raw forecast variables for each activity and the initial ideal-weather heuristics,
 - understanding Open-Meteo variable semantics from the official weather and geocoding documentation,
 - pressure-testing comfort thresholds and ranking weights,
+- attempting to resolve the nuanced tradeoffs in the scoring algorithm,
 - evaluating whether direct daily API queries would be sufficient versus hourly-to-daily aggregation,
 - reconstructing the monorepo setup flow into a repeatable project scaffold,
 - drafting repository documentation and smoke-test checklists,
-- adapting the Venture HTML theme into a Nuxt implementation.
+- adapting the Venture HTML theme into a Nuxt implementation,
+- converting BEM-based UI CSS into Tailwind CSS.
 
 ## Risks
 
