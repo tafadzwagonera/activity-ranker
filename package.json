@@ -30,6 +30,9 @@
     "test:ci": "yarn workspaces run test:ci",
     "typecheck": "yarn workspaces run typecheck"
   },
+  "resolutions": {
+    "tailwindcss": "^3.4.0"
+  },
   "devDependencies": {
     "@evilmartians/lefthook": "^2.1.6",
     "istanbul-lib-coverage": "^3.2.2",

@@ -20,6 +20,28 @@ Next.js mirror of the Venture activity forecast UI.
 - `transport=rest` and `transport=graphql` are both supported on the Next proxy routes.
 - If Docker startup looks stale after a previous runtime bootstrap experiment, run `docker compose down --volumes --remove-orphans` once before starting again.
 
+## Styling
+
+### CSS variables and Tailwind
+
+CSS custom properties in `app/globals.css` are the source of truth for all design
+tokens (colours, shadows, radii). Tailwind extends its theme with `var(--token)`
+references so utilities like `text-gold` and `bg-sky` resolve through those properties
+at runtime. Dark mode is handled entirely by the `:root[data-theme="dark"]` selector
+set on `<html>`; Tailwind's `dark:` variant is not used.
+
+### Custom CSS hooks
+
+Some class names are intentionally kept as CSS hooks rather than replaced by Tailwind:
+
+| Class                   | Purpose                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `is-active`             | Highlights the selected transport button                                 |
+| `is-error`              | Colours error status messages with `--danger`                            |
+| `search-input`          | Targets the `:focus` ring that cannot be expressed as a Tailwind utility |
+| `activity-row`          | Targeted by the `max-width: 720 px` responsive override                  |
+| `activity-row__metrics` | Targeted by the `max-width: 720 px` responsive override                  |
+
 ## UX expectations
 
 - City or town autocomplete after three characters.

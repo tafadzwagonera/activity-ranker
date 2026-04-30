@@ -80,42 +80,85 @@ const runtimeLabel = computed(() => getRuntimeLabel(selectedTransport.value));
 </script>
 
 <template>
-  <main class="page-shell">
-    <header class="hero">
+  <main class="w-[min(1120px,calc(100%-2rem))] mx-auto py-8 pb-16">
+    <header
+      class="relative min-h-[46vh] pt-4 pb-10 max-[720px]:min-h-0 max-[720px]:pt-14"
+    >
       <button
-        class="theme-toggle focus-ring"
+        class="absolute top-0 right-0 max-[720px]:top-2 border border-border rounded-full bg-surface-2 text-text-1 py-3 px-4 cursor-pointer focus-ring"
         :aria-label="
           theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'
         "
         @click="applyTheme(theme === 'light' ? 'dark' : 'light')"
       >
-        {{ theme === "light" ? "Moon" : "Sun" }}
+        <svg
+          v-if="theme === 'light'"
+          aria-hidden="true"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+        <svg
+          v-else
+          aria-hidden="true"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <line x1="12" x2="12" y1="2" y2="6" />
+          <line x1="12" x2="12" y1="18" y2="22" />
+          <line x1="4.22" x2="7.05" y1="4.22" y2="7.05" />
+          <line x1="16.95" x2="19.78" y1="16.95" y2="19.78" />
+          <line x1="2" x2="6" y1="12" y2="12" />
+          <line x1="18" x2="22" y1="12" y2="12" />
+          <line x1="4.22" x2="7.05" y1="19.78" y2="16.95" />
+          <line x1="16.95" x2="19.78" y1="7.05" y2="4.22" />
+        </svg>
       </button>
 
-      <div class="wordmark">
-        <p class="eyebrow">Activity Forecast · Next 7 Days</p>
-        <h1>Venture</h1>
-        <p class="lede">
+      <div class="max-w-[42rem] pt-16">
+        <p
+          class="m-0 mb-2 text-text-3 text-xs font-bold tracking-[0.2em] uppercase"
+        >
+          Activity Forecast · Next 7 Days
+        </p>
+        <h1
+          class="m-0 text-text-1 font-serif text-[clamp(3.5rem,7vw,5rem)] leading-[0.95]"
+        >
+          Venture
+        </h1>
+        <p class="max-w-[34rem] text-text-2 text-[1.05rem] leading-[1.7]">
           Search a city or town to rank what it will be most desirable to do
           over the next seven days.
         </p>
       </div>
 
-      <div class="search-panel">
+      <div
+        class="mt-8 p-[1.4rem] border border-border rounded-lg bg-[color-mix(in_srgb,var(--surface-1)_92%,transparent)] shadow backdrop-blur-[18px]"
+      >
         <div
-          class="transport-switch"
+          class="inline-flex gap-2 p-[0.35rem] rounded-full bg-surface-2"
           role="tablist"
           aria-label="Transport mode"
         >
           <button
-            class="transport-switch__button focus-ring"
+            class="border-none rounded-full bg-transparent text-text-2 cursor-pointer font-semibold py-[0.65rem] px-4 focus-ring"
             :class="{ 'is-active': selectedTransport === 'rest' }"
             @click="selectedTransport = 'rest'"
           >
             REST
           </button>
           <button
-            class="transport-switch__button focus-ring"
+            class="border-none rounded-full bg-transparent text-text-2 cursor-pointer font-semibold py-[0.65rem] px-4 focus-ring"
             :class="{ 'is-active': selectedTransport === 'graphql' }"
             @click="selectedTransport = 'graphql'"
           >
@@ -123,12 +166,18 @@ const runtimeLabel = computed(() => getRuntimeLabel(selectedTransport.value));
           </button>
         </div>
 
-        <p class="transport-copy">{{ runtimeLabel }}</p>
+        <p class="mt-3 mb-4 text-[0.9rem] text-text-2">{{ runtimeLabel }}</p>
 
-        <div class="selection-row" aria-live="polite">
-          <span v-if="selectedLocation" class="city-tag">
+        <div class="min-h-[2rem] mb-3" aria-live="polite">
+          <span
+            v-if="selectedLocation"
+            class="inline-flex items-center gap-3 py-[0.35rem] pr-2 pl-[0.9rem] border border-gold-ring rounded-full bg-gold-dim text-gold text-sm font-semibold animate-[tagIn_0.18s_ease-out]"
+          >
             {{ selectedLocation.name }}
-            <button class="city-tag__remove focus-ring" @click="clearSelection">
+            <button
+              class="border-none rounded-full bg-transparent text-inherit cursor-pointer text-base focus-ring"
+              @click="clearSelection"
+            >
               ×
             </button>
           </span>
@@ -140,31 +189,35 @@ const runtimeLabel = computed(() => getRuntimeLabel(selectedTransport.value));
         <input
           id="city-search"
           v-model="query"
-          class="search-input focus-ring"
+          class="search-input w-full py-4 px-[1.1rem] border-[1.5px] border-border rounded-lg bg-surface-1 text-text-1 shadow focus-ring"
           type="search"
           autocomplete="off"
           placeholder="Search for a city or town"
         />
 
-        <p v-if="searching" class="status-copy">Searching destinations…</p>
-        <p v-else-if="searchError" class="status-copy is-error">
+        <p v-if="searching" class="text-text-2">Searching destinations…</p>
+        <p v-else-if="searchError" class="text-text-2 is-error">
           {{ searchError }}
         </p>
-        <p v-else-if="selectionError" class="status-copy is-error">
+        <p v-else-if="selectionError" class="text-text-2 is-error">
           {{ selectionError }}
         </p>
-        <p v-else class="status-copy">
+        <p v-else class="text-text-2">
           Suggestions appear after three characters.
         </p>
 
-        <ul v-if="results.length" class="suggestions" role="listbox">
+        <ul
+          v-if="results.length"
+          class="list-none mt-4 p-0 grid gap-[0.65rem] animate-[dropIn_0.14s_ease-out]"
+          role="listbox"
+        >
           <li v-for="result in results" :key="result.id">
             <button
-              class="suggestion focus-ring"
+              class="w-full flex flex-col items-start gap-1 py-[0.95rem] px-4 border border-border rounded bg-surface-1 cursor-pointer text-left transition-[transform,border-color,background] duration-[0.18s] ease-in-out hover:-translate-y-px hover:border-border-h hover:bg-sky-dim focus-ring"
               @click="onSelectLocation(result)"
             >
-              <span class="suggestion__name">{{ result.name }}</span>
-              <span class="suggestion__meta">
+              <span class="text-text-1 font-semibold">{{ result.name }}</span>
+              <span class="text-text-3 font-mono text-[0.8rem]">
                 {{ result.admin1
                 }}<span v-if="result.admin1 && result.country">, </span
                 >{{ result.country }}
@@ -175,47 +228,89 @@ const runtimeLabel = computed(() => getRuntimeLabel(selectedTransport.value));
       </div>
     </header>
 
-    <section v-if="selectedLocation" class="results">
-      <div class="results__header">
+    <section
+      v-if="selectedLocation"
+      class="mt-8 p-6 border border-border rounded-lg bg-[color-mix(in_srgb,var(--surface-1)_92%,transparent)] shadow"
+    >
+      <div>
         <div>
-          <p class="eyebrow">Selected destination</p>
-          <h2>{{ selectedLocation.name }}</h2>
-          <p class="meta-copy">
+          <p
+            class="m-0 mb-2 text-text-3 text-xs font-bold tracking-[0.2em] uppercase"
+          >
+            Selected destination
+          </p>
+          <h2 class="m-0 font-serif text-[2rem]">
+            {{ selectedLocation.name }}
+          </h2>
+          <p class="text-text-2">
             {{ selectedLocation.latitude.toFixed(4) }},
             {{ selectedLocation.longitude.toFixed(4) }}
           </p>
         </div>
       </div>
 
-      <div v-if="loadingRankings" class="loading-grid" aria-live="polite">
-        <div v-for="card in 3" :key="card" class="loading-card" />
+      <div
+        v-if="loadingRankings"
+        class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+        aria-live="polite"
+      >
+        <div
+          v-for="card in 3"
+          :key="card"
+          class="loading-card min-h-[16rem] rounded-lg bg-gradient-to-r from-surface-2 via-surface-3 to-surface-2 [background-size:200%_100%] animate-[shimmer_1.4s_linear_infinite]"
+        />
       </div>
 
-      <p v-else-if="rankingError" class="status-copy is-error">
+      <p v-else-if="rankingError" class="text-text-2 is-error">
         {{ rankingError }}
       </p>
 
-      <div v-else-if="rankings" class="days-grid">
-        <article v-for="day in rankings.days" :key="day.date" class="day-card">
-          <div class="day-card__header">
-            <p class="eyebrow">{{ day.date }}</p>
-            <h3>Best activities</h3>
+      <div
+        v-else-if="rankings"
+        class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
+      >
+        <article
+          v-for="(day, index) in rankings.days"
+          :key="day.date"
+          class="p-[1.15rem] border border-border rounded-lg bg-[color-mix(in_srgb,var(--surface-1)_92%,transparent)] shadow animate-[fadeUp_0.35s_ease-out]"
+          :style="
+            index === 1
+              ? { animationDelay: '0.08s' }
+              : index === 2
+                ? { animationDelay: '0.16s' }
+                : undefined
+          "
+        >
+          <div>
+            <p
+              class="m-0 mb-2 text-text-3 text-xs font-bold tracking-[0.2em] uppercase"
+            >
+              {{ day.date }}
+            </p>
+            <h3 class="m-0 font-serif text-[2rem]">Best activities</h3>
           </div>
 
-          <ol class="activity-list">
+          <ol class="list-none mt-4 p-0 grid gap-[0.85rem]">
             <li
               v-for="activity in day.activities"
               :key="activity.activity"
-              class="activity-row"
+              class="activity-row flex justify-between gap-4 items-start pt-[0.85rem] border-t border-border first:pt-0 first:border-t-0"
             >
               <div>
-                <p class="activity-row__title">{{ activity.activity }}</p>
-                <p class="activity-row__reason">{{ activity.reasons[0] }}</p>
+                <p class="m-0 capitalize font-bold">
+                  {{ activity.activity }}
+                </p>
+                <p class="mt-1 text-text-2 text-[0.9rem] leading-[1.5]">
+                  {{ activity.reasons[0] }}
+                </p>
               </div>
 
-              <div class="activity-row__metrics">
-                <span class="pill">{{ activity.score.toFixed(2) }}</span>
-                <span class="confidence"
+              <div class="activity-row__metrics text-right">
+                <span
+                  class="inline-flex py-[0.3rem] px-[0.6rem] rounded-full bg-gold-dim text-gold font-mono text-[0.8rem]"
+                  >{{ activity.score.toFixed(2) }}</span
+                >
+                <span class="block mt-[0.35rem] text-text-3 text-[0.8rem]"
                   >Confidence {{ activity.confidence.toFixed(2) }}</span
                 >
               </div>
@@ -226,337 +321,3 @@ const runtimeLabel = computed(() => getRuntimeLabel(selectedTransport.value));
     </section>
   </main>
 </template>
-
-<style scoped>
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.page-shell {
-  width: min(1120px, calc(100% - 2rem));
-  margin: 0 auto;
-  padding: 2rem 0 4rem;
-}
-
-.hero {
-  position: relative;
-  min-height: 46vh;
-  padding: 1rem 0 2.5rem;
-}
-
-.theme-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--text-1);
-  padding: 0.7rem 1rem;
-  cursor: pointer;
-}
-
-.wordmark {
-  max-width: 42rem;
-  padding-top: 4rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.5rem;
-  color: var(--text-3);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.wordmark h1 {
-  margin: 0;
-  color: var(--text-1);
-  font-family: Cormorant, Georgia, serif;
-  font-size: clamp(3.5rem, 7vw, 5rem);
-  line-height: 0.95;
-}
-
-.lede {
-  max-width: 34rem;
-  color: var(--text-2);
-  font-size: 1.05rem;
-  line-height: 1.7;
-}
-
-.search-panel,
-.results,
-.day-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-  box-shadow: var(--shadow);
-}
-
-.search-panel {
-  margin-top: 2rem;
-  padding: 1.4rem;
-  backdrop-filter: blur(18px);
-}
-
-.transport-switch {
-  display: inline-flex;
-  gap: 0.5rem;
-  padding: 0.35rem;
-  border-radius: 999px;
-  background: var(--surface-2);
-}
-
-.transport-switch__button {
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-2);
-  cursor: pointer;
-  font-weight: 600;
-  padding: 0.65rem 1rem;
-}
-
-.transport-switch__button.is-active {
-  background: var(--surface-1);
-  color: var(--sky);
-  box-shadow: var(--shadow);
-}
-
-.transport-copy,
-.status-copy,
-.meta-copy {
-  color: var(--text-2);
-}
-
-.transport-copy {
-  margin: 0.75rem 0 1rem;
-  font-size: 0.9rem;
-}
-
-.status-copy.is-error {
-  color: var(--danger);
-}
-
-.selection-row {
-  min-height: 2rem;
-  margin-bottom: 0.75rem;
-}
-
-.city-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.35rem 0.5rem 0.35rem 0.9rem;
-  border: 1px solid var(--gold-ring);
-  border-radius: 999px;
-  background: var(--gold-dim);
-  color: var(--gold);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.city-tag__remove {
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.search-input {
-  width: 100%;
-  padding: 1rem 1.1rem;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface-1);
-  color: var(--text-1);
-  box-shadow: var(--shadow);
-}
-
-.search-input:focus {
-  border-color: var(--sky);
-  box-shadow:
-    0 0 0 3px var(--sky-ring),
-    var(--shadow);
-  outline: none;
-}
-
-.suggestions {
-  list-style: none;
-  margin: 1rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.65rem;
-}
-
-.suggestion {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-  padding: 0.95rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface-1);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    background 0.18s ease;
-}
-
-.suggestion:hover {
-  transform: translateY(-1px);
-  border-color: var(--border-h);
-  background: var(--sky-dim);
-}
-
-.suggestion__name {
-  color: var(--text-1);
-  font-weight: 600;
-}
-
-.suggestion__meta {
-  color: var(--text-3);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 0.8rem;
-}
-
-.results {
-  margin-top: 2rem;
-  padding: 1.5rem;
-}
-
-.results__header h2,
-.day-card h3 {
-  margin: 0;
-  font-family: Cormorant, Georgia, serif;
-  font-size: 2rem;
-}
-
-.loading-grid,
-.days-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.loading-card {
-  min-height: 16rem;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(
-    90deg,
-    var(--surface-2) 0%,
-    var(--surface-3) 50%,
-    var(--surface-2) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
-}
-
-.day-card {
-  padding: 1.15rem;
-}
-
-.activity-list {
-  list-style: none;
-  margin: 1rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.85rem;
-}
-
-.activity-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--border);
-}
-
-.activity-row:first-child {
-  padding-top: 0;
-  border-top: none;
-}
-
-.activity-row__title {
-  margin: 0;
-  text-transform: capitalize;
-  font-weight: 700;
-}
-
-.activity-row__reason {
-  margin: 0.2rem 0 0;
-  color: var(--text-2);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.activity-row__metrics {
-  text-align: right;
-}
-
-.pill {
-  display: inline-flex;
-  padding: 0.3rem 0.6rem;
-  border-radius: 999px;
-  background: var(--gold-dim);
-  color: var(--gold);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 0.8rem;
-}
-
-.confidence {
-  display: block;
-  margin-top: 0.35rem;
-  color: var(--text-3);
-  font-size: 0.8rem;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-
-  100% {
-    background-position: -100% 0;
-  }
-}
-
-@media (max-width: 720px) {
-  .page-shell {
-    width: min(100% - 1rem, 1120px);
-  }
-
-  .hero {
-    min-height: auto;
-    padding-top: 3.5rem;
-  }
-
-  .theme-toggle {
-    top: 0.5rem;
-  }
-
-  .activity-row {
-    flex-direction: column;
-  }
-
-  .activity-row__metrics {
-    text-align: left;
-  }
-}
-</style>
