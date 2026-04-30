@@ -90,7 +90,7 @@ The active boundaries are:
 
 The backend is the final authority for request completion because it sets its own response header and writes its structured log on `response.finish`. The frontend proxy is the caller-facing authority because it validates input, decides REST vs GraphQL transport, returns the public error envelope, and logs proxy success or failure with the same `requestId`.
 
-### Request Lifecycle
+### Request lifecycle
 
 One request follows this generalized flow:
 
@@ -115,7 +115,7 @@ Short framework deltas:
 - Next keeps correlation state on `ProxyRequestContext` derived from the standard `Request`.
 - Nest keeps correlation state on the Express request object as `request.requestId` and `request.startTimeInMs`.
 
-### Call Stack
+### Call stack
 
 Nuxt search request path:
 
@@ -180,7 +180,7 @@ GraphQL
 └── LocationsResolver.rankActivitiesByCoordinates(...)
 ```
 
-### Program State
+### Program state
 
 Frontend proxy context in both frameworks:
 
@@ -238,7 +238,7 @@ What changes at each boundary:
 - Nest stores correlation and timing state on the Express request object until `response.finish`.
 - Logs derive `durationInMs`, `statusCode`, `event`, and `outcome` at the moment the boundary knows the final result.
 
-### Failure Behavior
+### Failure behavior
 
 Validation failures are handled at the proxy boundary before any backend call:
 
@@ -291,7 +291,7 @@ Success payloads preserve the same correlation ID too:
 - GraphQL callers receive the GraphQL payload plus `x-request-id`
 - frontend proxy callers receive the proxy success payload plus `x-request-id`
 
-### Log Contract and Metrics
+### Log contract and metrics
 
 The active shared request log contract is `RequestLog` in `@activity-ranker/shared`. The fields that matter for correlation and log-derived metrics are:
 
@@ -542,7 +542,7 @@ LocationsService {
 - Controllers and resolvers normalize input, then delegate to `LocationsService`, which delegates to mocked or real geocoding and weather providers.
 - Tests assert the state at the point where each layer owns correctness: refs in composable and DOM tests, proxy envelopes in frontend handler tests, and headers plus payload shape in backend e2e tests.
 
-## Rank Scoring algorithm
+## Rank scoring algorithm nuances
 
 The ranking flow starts with coordinates and ends with a sorted daily list of `ActivityScore` objects:
 
@@ -769,7 +769,7 @@ import { GEOCODING_PROVIDER, WEATHER_PROVIDER } from "./weather.constants";
 - The backend centralizes third-party weather and geocoding calls so request headers, logging, and failure handling stay under one service boundary.
 - Unauthorized requests return explicit 401 responses instead of silent fallback behavior.
 
-## AI Usage
+## AI usage
 
 AI assistance was used for:
 
