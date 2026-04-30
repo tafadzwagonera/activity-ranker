@@ -242,7 +242,7 @@ const runtimeLabel = computed(() => getRuntimeLabel(selectedTransport.value));
           <h2 class="m-0 font-serif text-[2rem]">
             {{ selectedLocation.name }}
           </h2>
-          <p class="text-text-2">
+          <p class="my-2 text-text-2">
             {{ selectedLocation.latitude.toFixed(4) }},
             {{ selectedLocation.longitude.toFixed(4) }}
           </p>

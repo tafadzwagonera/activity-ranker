@@ -304,7 +304,7 @@ export const ActivityRankerClient = () => {
               <h2 className="m-0 font-serif text-[2rem]">
                 {selectedLocation.name}
               </h2>
-              <p className="text-text-2">
+              <p className="my-2 text-text-2">
                 {selectedLocation.latitude.toFixed(4)},{" "}
                 {selectedLocation.longitude.toFixed(4)}
               </p>
