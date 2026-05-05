@@ -8,6 +8,14 @@ import type {
 import { activityIds } from '@activity-ranker/shared';
 import type { HourlyForecast, RankingInput, SurfSpot } from './weather.types';
 
+const MIN_FORECAST_CONFIDENCE = 0.35 as const;
+const MAX_FORECAST_CONFIDENCE = 0.98 as const;
+const SURFING_MISSING_SURF_SPOT_CONFIDENCE_PENALTY = 0.31 as const;
+const OUTDOOR_RAIN_REASON_THRESHOLD_MM = 4 as const;
+const SKIING_WARM_TEMPERATURE_REASON_THRESHOLD_C = 2 as const;
+const INDOOR_RAIN_REASON_THRESHOLD_MM = 2 as const;
+const WIND_UNCERTAINTY_REASON_THRESHOLD_KMH = 25 as const;
+
 const clamp = (value: number, min = 0, max = 1) =>
   Math.min(max, Math.max(min, value));
 
@@ -41,10 +49,14 @@ export class RankingService {
     const average = this.average(hourlyScores);
     const volatility = this.standardDeviation(hourlyScores);
     const reasons = this.buildReasons(activity, hourlyForecasts, surfSpot);
-    const baseConfidence = clamp(1 - volatility, 0.35, 0.98);
+    const baseConfidence = clamp(
+      1 - volatility,
+      MIN_FORECAST_CONFIDENCE,
+      MAX_FORECAST_CONFIDENCE,
+    );
     const confidence =
       activity === 'surfing' && !surfSpot
-        ? clamp(baseConfidence - 0.31)
+        ? clamp(baseConfidence - SURFING_MISSING_SURF_SPOT_CONFIDENCE_PENALTY)
         : baseConfidence;
 
     return {
@@ -81,23 +93,32 @@ export class RankingService {
       );
     }
 
-    if (activity === 'outdoorSightseeing' && precipitationPeak > 4) {
+    if (
+      activity === 'outdoorSightseeing' &&
+      precipitationPeak > OUTDOOR_RAIN_REASON_THRESHOLD_MM
+    ) {
       reasons.push(
         'At least one hourly rain window weakens outdoor reliability.',
       );
     }
 
-    if (activity === 'skiing' && meanTemperature > 2) {
+    if (
+      activity === 'skiing' &&
+      meanTemperature > SKIING_WARM_TEMPERATURE_REASON_THRESHOLD_C
+    ) {
       reasons.push('Temperatures are too warm to strongly support skiing.');
     }
 
-    if (activity === 'indoorSightseeing' && precipitationPeak > 2) {
+    if (
+      activity === 'indoorSightseeing' &&
+      precipitationPeak > INDOOR_RAIN_REASON_THRESHOLD_MM
+    ) {
       reasons.push('Wet conditions improve indoor activity desirability.');
     }
 
     if (!reasons.length) {
       reasons.push(
-        maxWind > 25
+        maxWind > WIND_UNCERTAINTY_REASON_THRESHOLD_KMH
           ? 'Stronger winds add uncertainty across the day.'
           : 'Hourly conditions remain reasonably consistent through the day.',
       );
