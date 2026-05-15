@@ -2,12 +2,23 @@
 
 import type {
   LocationSuggestion,
-  RankedActivitiesResponse,
   TransportMode,
 } from "@activity-ranker/shared";
 import { useEffect, useState } from "react";
 
 import { fetchRankings, fetchSearchResults } from "../utils/api-client";
+import {
+  createIdleRankingsState,
+  createIdleSearchState,
+  createRankingsErrorState,
+  createRankingsLoadingState,
+  createRankingsSuccessState,
+  createSearchErrorState,
+  createSearchLoadingState,
+  createSearchSuccessState,
+  type RankingsState,
+  type SearchState,
+} from "../utils/activity-lifecycle-state";
 import { selectLocation } from "../utils/location-selection";
 import { getRuntimeLabel } from "../utils/runtime-label";
 
@@ -54,20 +65,19 @@ const MoonIcon = () => (
 
 export const ActivityRankerClient = () => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<LocationSuggestion[]>([]);
   const [selectedLocation, setSelectedLocation] =
     useState<LocationSuggestion | null>(null);
   const [selectedTransport, setSelectedTransport] =
     useState<TransportMode>("rest");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [searching, setSearching] = useState(false);
-  const [loadingRankings, setLoadingRankings] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [rankingError, setRankingError] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
-  const [rankings, setRankings] = useState<RankedActivitiesResponse | null>(
-    null,
+  const [searchState, setSearchState] = useState<SearchState>(
+    createIdleSearchState(),
   );
+  const [rankingsState, setRankingsState] = useState<RankingsState>(
+    createIdleRankingsState(),
+  );
+  const trimmedQuery = query.trim();
 
   useEffect(() => {
     const storedTransport = window.localStorage.getItem(STORAGE_KEYS.transport);
@@ -93,33 +103,28 @@ export const ActivityRankerClient = () => {
   }, [theme]);
 
   useEffect(() => {
-    if (query.trim().length < 3) {
-      setResults([]);
-      setSearchError(null);
+    if (trimmedQuery.length < 3) {
+      setSearchState(createIdleSearchState());
       return;
     }
 
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
-      setSearching(true);
-      setSearchError(null);
+      setSearchState((current) => createSearchLoadingState(current.results));
 
       try {
         const nextResults = await fetchSearchResults({
           fetcher: (input, init) =>
             fetch(input, { ...init, signal: controller.signal }),
-          query: query.trim(),
+          query: trimmedQuery,
           transport: selectedTransport,
         });
-        setResults(nextResults);
+        setSearchState(createSearchSuccessState(nextResults));
       } catch {
         if (!controller.signal.aborted) {
-          setResults([]);
-          setSearchError("Unable to search for this location.");
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setSearching(false);
+          setSearchState(
+            createSearchErrorState("Unable to search for this location."),
+          );
         }
       }
     }, 350);
@@ -128,17 +133,16 @@ export const ActivityRankerClient = () => {
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [query, selectedTransport]);
+  }, [trimmedQuery, selectedTransport]);
 
   useEffect(() => {
     if (!selectedLocation) {
-      setRankings(null);
+      setRankingsState(createIdleRankingsState());
       return;
     }
 
     const load = async () => {
-      setLoadingRankings(true);
-      setRankingError(null);
+      setRankingsState((current) => createRankingsLoadingState(current.data));
 
       try {
         const nextRankings = await fetchRankings({
@@ -147,12 +151,11 @@ export const ActivityRankerClient = () => {
           longitude: selectedLocation.longitude,
           transport: selectedTransport,
         });
-        setRankings(nextRankings);
+        setRankingsState(createRankingsSuccessState(nextRankings));
       } catch {
-        setRankings(null);
-        setRankingError("Unable to load activity rankings.");
-      } finally {
-        setLoadingRankings(false);
+        setRankingsState(
+          createRankingsErrorState("Unable to load activity rankings."),
+        );
       }
     };
 
@@ -251,27 +254,31 @@ export const ActivityRankerClient = () => {
             value={query}
           />
 
-          {searching ? (
+          {searchState.status === "loading" ? (
             <p className="text-text-2">Searching destinations…</p>
           ) : null}
-          {!searching && searchError ? (
-            <p className="text-text-2 is-error">{searchError}</p>
+          {searchState.status !== "loading" && searchState.error ? (
+            <p className="text-text-2 is-error">{searchState.error}</p>
           ) : null}
-          {!searching && !searchError && selectionError ? (
+          {searchState.status !== "loading" &&
+          !searchState.error &&
+          selectionError ? (
             <p className="text-text-2 is-error">{selectionError}</p>
           ) : null}
-          {!searching && !searchError && !selectionError ? (
+          {searchState.status !== "loading" &&
+          !searchState.error &&
+          !selectionError ? (
             <p className="text-text-2">
               Suggestions appear after three characters.
             </p>
           ) : null}
 
-          {results.length ? (
+          {searchState.results.length ? (
             <ul
               className="list-none mt-4 p-0 grid gap-[0.65rem] animate-[dropIn_0.14s_ease-out]"
               role="listbox"
             >
-              {results.map((result) => (
+              {searchState.results.map((result) => (
                 <li key={result.id}>
                   <button
                     className="w-full flex flex-col items-start gap-1 py-[0.95rem] px-4 border border-border rounded bg-surface-1 cursor-pointer text-left transition-[transform,border-color,background] duration-[0.18s] ease-in-out hover:-translate-y-px hover:border-border-h hover:bg-sky-dim focus-ring"
@@ -311,7 +318,7 @@ export const ActivityRankerClient = () => {
             </div>
           </div>
 
-          {loadingRankings ? (
+          {rankingsState.status === "loading" ? (
             <div
               aria-live="polite"
               className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]"
@@ -325,13 +332,13 @@ export const ActivityRankerClient = () => {
             </div>
           ) : null}
 
-          {!loadingRankings && rankingError ? (
-            <p className="text-text-2 is-error">{rankingError}</p>
+          {rankingsState.status !== "loading" && rankingsState.error ? (
+            <p className="text-text-2 is-error">{rankingsState.error}</p>
           ) : null}
 
-          {!loadingRankings && !rankingError && rankings ? (
+          {rankingsState.status === "success" && rankingsState.data ? (
             <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
-              {rankings.days.map((day, index) => (
+              {rankingsState.data.days.map((day, index) => (
                 <article
                   className="p-[1.15rem] border border-border rounded-lg bg-[color-mix(in_srgb,var(--surface-1)_92%,transparent)] shadow animate-[fadeUp_0.35s_ease-out]"
                   key={day.date}
