@@ -47,4 +47,4 @@ Some class names are intentionally kept as CSS hooks rather than replaced by Tai
 - City or town autocomplete after three characters.
 - One selected location at a time.
 - User-visible `REST` / `GraphQL` transport switch.
-- Theme persistence without cookies.
+- Theme and transport persistence across refresh via server-readable cookies and local storage.

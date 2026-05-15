@@ -32,7 +32,7 @@ Start the app: `yarn dev` (runs on http://localhost:3002)
 
 - Page background switches to deep navy (`#050b14`).
 - Toggle now shows a sun SVG icon.
-- After refresh, dark theme is restored from localStorage.
+- After refresh, dark theme is restored immediately from the persisted preference cookie and remains mirrored in localStorage.
 
 ---
 
@@ -109,7 +109,7 @@ Start the app: `yarn dev` (runs on http://localhost:3002)
 
 - Active button highlights (surface-1 background, sky text colour).
 - Rankings load via the GraphQL route.
-- After refresh, selected transport is restored from localStorage.
+- After refresh, selected transport is restored immediately from the persisted preference cookie and remains mirrored in localStorage.
 
 ---
 

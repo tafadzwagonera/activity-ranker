@@ -9,12 +9,13 @@ import { useEffect, useState } from "react";
 
 import { fetchRankings, fetchSearchResults } from "../utils/api-client";
 import { selectLocation } from "../utils/location-selection";
+import {
+  buildPreferenceCookie,
+  preferenceCookieNames,
+  preferenceStorageKeys,
+  type ThemeMode,
+} from "../utils/preferences";
 import { getRuntimeLabel } from "../utils/runtime-label";
-
-const STORAGE_KEYS = {
-  theme: "activity-ranker-next-theme",
-  transport: "activity-ranker-next-transport",
-} as const;
 
 const SunIcon = () => (
   <svg
@@ -52,14 +53,22 @@ const MoonIcon = () => (
   </svg>
 );
 
-export const ActivityRankerClient = () => {
+type ActivityRankerClientProps = {
+  initialTheme: ThemeMode;
+  initialTransport: TransportMode;
+};
+
+export const ActivityRankerClient = ({
+  initialTheme,
+  initialTransport,
+}: ActivityRankerClientProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LocationSuggestion[]>([]);
   const [selectedLocation, setSelectedLocation] =
     useState<LocationSuggestion | null>(null);
   const [selectedTransport, setSelectedTransport] =
-    useState<TransportMode>("rest");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+    useState<TransportMode>(initialTransport);
+  const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const [searching, setSearching] = useState(false);
   const [loadingRankings, setLoadingRankings] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -70,26 +79,23 @@ export const ActivityRankerClient = () => {
   );
 
   useEffect(() => {
-    const storedTransport = window.localStorage.getItem(STORAGE_KEYS.transport);
-    const storedTheme = window.localStorage.getItem(STORAGE_KEYS.theme);
-
-    if (storedTransport === "rest" || storedTransport === "graphql") {
-      setSelectedTransport(storedTransport);
-    }
-
-    if (storedTheme === "light" || storedTheme === "dark") {
-      setTheme(storedTheme);
-      document.documentElement.dataset.theme = storedTheme;
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEYS.transport, selectedTransport);
+    window.localStorage.setItem(
+      preferenceStorageKeys.transport,
+      selectedTransport,
+    );
+    document.cookie = buildPreferenceCookie({
+      name: preferenceCookieNames.transport,
+      value: selectedTransport,
+    });
   }, [selectedTransport]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem(STORAGE_KEYS.theme, theme);
+    window.localStorage.setItem(preferenceStorageKeys.theme, theme);
+    document.cookie = buildPreferenceCookie({
+      name: preferenceCookieNames.theme,
+      value: theme,
+    });
   }, [theme]);
 
   useEffect(() => {

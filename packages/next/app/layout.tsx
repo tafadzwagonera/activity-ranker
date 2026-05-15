@@ -1,5 +1,10 @@
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 
+import {
+  preferenceCookieNames,
+  resolveThemePreference,
+} from "../utils/preferences";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,9 +15,14 @@ type RootLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const cookieStore = await cookies();
+  const initialTheme = resolveThemePreference(
+    cookieStore.get(preferenceCookieNames.theme)?.value,
+  );
+
   return (
-    <html lang="en">
+    <html data-theme={initialTheme} lang="en">
       <head>
         <link href="https://fonts.googleapis.com" rel="preconnect" />
         <link
