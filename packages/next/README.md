@@ -14,6 +14,7 @@ Next.js mirror of the Venture activity forecast UI.
 ## Local runtime notes
 
 - The Next app expects the backend at `http://localhost:3000` by default.
+- Next startup loads `.env` and `.env.local` from the repo root and `packages/next`, then preserves any shell-provided environment variables over file values.
 - Configure `NEXT_API_INTERNAL_KEY` for server-side proxy requests.
 - Override `NEXT_API_BASE_URL` if the backend runs on a different host or port.
 - Browser requests stay same-origin and flow through Next route handlers under `/api/locations/*`.

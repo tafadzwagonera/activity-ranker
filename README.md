@@ -82,10 +82,13 @@ node -e "const https=require('https'); const opts={hostname:'registry.yarnpkg.co
 - The backend HTTP entrypoint defaults to `http://localhost:3000`.
 - Use `PORT=3000 yarn dev:be` to override the backend HTTP port for local development.
 - Use `PORT=3000 yarn workspace @activity-ranker/be start` only when running the built Nest app directly.
+- Direct backend startup loads `.env` and `.env.local` from the repo root and `packages/be`, then preserves shell-provided environment variables over file values.
 - `NUXT_API_BASE_URL` only needs to be set when the frontend should target a non-default backend host or port.
 - `NUXT_API_INTERNAL_KEY` is optional for local development because the frontend defaults to `internal-dev-key`.
+- Nuxt startup loads `.env` and `.env.local` from the repo root and `packages/fe`, then preserves shell-provided environment variables over file values.
 - `NEXT_API_BASE_URL` only needs to be set when the Next.js mirror should target a non-default backend host or port.
 - `NEXT_API_INTERNAL_KEY` is optional for local development because the Next.js mirror defaults to `internal-dev-key`.
+- Next startup loads `.env` and `.env.local` from the repo root and `packages/next`, then preserves shell-provided environment variables over file values.
 - `docker compose up --build -d` publishes the Next.js mirror on `http://localhost:3002`, the Nuxt app on `http://localhost:3001`, and wires both server-side proxies to `http://be:3000`.
 - The compose stack no longer depends on a runtime `deps` service; if you are resuming from an older dirty stack, clear volumes with `docker compose down --volumes --remove-orphans` before restarting.
 

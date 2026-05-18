@@ -1,7 +1,10 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const NUXT_DIR = path.resolve(".nuxt");
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const packageRootDir = path.resolve(currentDir, "..");
+const NUXT_DIR = path.resolve(packageRootDir, ".nuxt");
 const ROUTE_BLOCK_PLUGIN = "vue-router/volar/sfc-route-blocks";
 
 /**
@@ -32,6 +35,18 @@ const patchTypecheckConfig = async (filePath) => {
 };
 
 /**
+ * @param {string} filePath
+ * @returns {Promise<void>}
+ */
+const assertPluginRemoved = async (filePath) => {
+  const content = await readFile(filePath, "utf8");
+
+  if (content.includes(ROUTE_BLOCK_PLUGIN)) {
+    throw new Error(`Failed to remove ${ROUTE_BLOCK_PLUGIN} from ${filePath}`);
+  }
+};
+
+/**
  * Patch every generated Nuxt tsconfig file used by vue-tsc.
  *
  * @returns {Promise<void>}
@@ -44,6 +59,9 @@ const main = async () => {
 
   await Promise.all(
     typecheckConfigs.map((configPath) => patchTypecheckConfig(configPath)),
+  );
+  await Promise.all(
+    typecheckConfigs.map((configPath) => assertPluginRemoved(configPath)),
   );
 };
 

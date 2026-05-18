@@ -9,6 +9,7 @@ info:
     - Docker-first: `docker compose up --build -d`
     - Node/Yarn fallback: `PORT=3000 yarn dev:be`
     - If you are resuming from an older compose state, clear volumes once with `docker compose down --volumes --remove-orphans` before starting again
+    - Direct backend startup loads `.env` and `.env.local` from the repo root and `packages/be`, then preserves shell-provided environment variables over file values
 
     Authentication:
     - Authenticated endpoints accept either `XApiKey` or `XInternalKey`

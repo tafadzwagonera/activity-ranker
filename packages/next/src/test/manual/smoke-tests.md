@@ -1,7 +1,7 @@
 # Next manual smoke tests
 
 1. Start the backend with `API_KEY_PUBLIC_VALUES=public-dev-key API_KEY_INTERNAL_VALUES=internal-dev-key PORT=3000 yarn dev:be`.
-2. Start the Next app with `NEXT_API_INTERNAL_KEY=internal-dev-key yarn dev:next`.
+2. Start the Next app with `yarn dev:next`. Override `NEXT_API_INTERNAL_KEY` only if you want non-default local credentials.
 3. Run `curl -I http://127.0.0.1:3002` and confirm the response is `200 OK`.
 4. Open `http://localhost:3002` and confirm the Venture heading, transport toggle, and search input render.
 5. Reload the page and confirm Next does not return a Tailwind or PostCSS startup error.

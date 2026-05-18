@@ -9,7 +9,7 @@
     "preview": "nuxt preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "yarn --cwd ../shared build && nuxt prepare && node ./scripts/patch-nuxt-typecheck-config.mjs && vue-tsc --project ./.nuxt/tsconfig.json --noEmit",
+    "typecheck": "yarn --cwd ../shared build && node ./scripts/run-typecheck.mjs",
     "test:ci": "yarn --cwd ../shared build && vitest run --coverage",
     "test:e2e": "yarn --cwd ../shared build && playwright test",
     "test:fe:ui": "yarn --cwd ../shared build && vitest --ui",
