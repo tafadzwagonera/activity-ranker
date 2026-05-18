@@ -20,6 +20,7 @@ Nuxt frontend for the Venture activity forecast UI.
 ## Local runtime notes
 
 - The frontend expects the backend at `http://localhost:3000` by default.
+- Nuxt startup loads `.env` and `.env.local` from the repo root and `packages/fe`, then preserves any shell-provided environment variables over file values.
 - `NUXT_API_INTERNAL_KEY` defaults to `internal-dev-key` for local development, including the Docker quickstart.
 - Override `NUXT_API_BASE_URL` if the backend runs on a different host or port.
 - Browser requests stay same-origin and flow through Nuxt server routes under `/api/locations/*`.

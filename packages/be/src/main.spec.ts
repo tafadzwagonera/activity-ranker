@@ -1,3 +1,5 @@
+import { applyLocalAuthDefaults } from './runtime-auth-defaults';
+
 const mockEnableCors = jest.fn();
 const mockListen = jest.fn();
 const mockNestFactoryCreate = jest.fn(() =>
@@ -34,7 +36,12 @@ describe('main bootstrap', () => {
     mockListen.mockReset();
     mockNestFactoryCreate.mockClear();
     jest.resetModules();
-    withEnv({ PORT: undefined });
+    withEnv({
+      API_KEY_INTERNAL_VALUES: undefined,
+      API_KEY_PUBLIC_VALUES: undefined,
+      NODE_ENV: undefined,
+      PORT: undefined,
+    });
   });
 
   afterEach(() => {
@@ -70,5 +77,20 @@ describe('main bootstrap', () => {
     await bootstrap();
 
     expect(mockListen).toHaveBeenCalledWith(3000);
+  });
+
+  it('applies documented auth defaults for local startup when env values are unset', () => {
+    applyLocalAuthDefaults();
+
+    expect(process.env.API_KEY_PUBLIC_VALUES).toBe('public-dev-key');
+    expect(process.env.API_KEY_INTERNAL_VALUES).toBe('internal-dev-key');
+  });
+
+  it('does not apply auth defaults in production mode', () => {
+    withEnv({ NODE_ENV: 'production' });
+    applyLocalAuthDefaults();
+
+    expect(process.env.API_KEY_PUBLIC_VALUES).toBeUndefined();
+    expect(process.env.API_KEY_INTERNAL_VALUES).toBeUndefined();
   });
 });

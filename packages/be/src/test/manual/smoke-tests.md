@@ -2,9 +2,9 @@
 
 ## Setup
 
-1. Start the backend with `API_KEY_PUBLIC_VALUES=public-dev-key API_KEY_INTERNAL_VALUES=internal-dev-key PORT=3000 yarn workspace @activity-ranker/be dev` or start the full stack with `docker compose up --build`.
+1. Start the backend with `PORT=3000 yarn workspace @activity-ranker/be dev` or start the full stack with `docker compose up --build`. Override `API_KEY_PUBLIC_VALUES` and `API_KEY_INTERNAL_VALUES` only if you want non-default local credentials.
 2. Confirm `curl http://localhost:3000/health` returns `200`.
-3. Build the backend with `yarn workspace @activity-ranker/be build`, run `API_KEY_PUBLIC_VALUES=public-dev-key API_KEY_INTERNAL_VALUES=internal-dev-key PORT=4000 yarn workspace @activity-ranker/be start` in a second shell, then confirm `curl http://localhost:4000/health` returns `200`.
+3. Build the backend with `yarn workspace @activity-ranker/be build`, run `PORT=4000 yarn workspace @activity-ranker/be start` in a second shell, then confirm `curl http://localhost:4000/health` returns `200`.
 
 ## Docker startup regression
 

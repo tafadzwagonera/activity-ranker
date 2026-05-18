@@ -19,8 +19,10 @@ NestJS backend for activity ranking.
 ## Local runtime notes
 
 - The backend entrypoint lives in `src/main.ts` for direct Nest startup, and `src/lambda.ts` contains the Lambda bridge for deployment.
+- Direct backend startup loads `.env` and `.env.local` from the repo root and `packages/be`, then preserves any shell-provided environment variables over file values.
 - `yarn dev` starts the Nest HTTP server directly, so `PORT` controls the public HTTP port.
 - `yarn start` runs the built Nest app directly, so `PORT` controls that listener.
+- Direct local startup defaults `API_KEY_PUBLIC_VALUES` to `public-dev-key` and `API_KEY_INTERNAL_VALUES` to `internal-dev-key` unless you override them.
 - The local health check is `http://localhost:3000/health` by default.
 - Authenticated routes accept either `XApiKey` or `XInternalKey`.
 - Prefer `headerNames.xApiKey` and `headerNames.xInternalKey` when importing backend auth header names from `@activity-ranker/shared`.

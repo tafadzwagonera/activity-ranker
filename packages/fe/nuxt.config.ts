@@ -1,8 +1,10 @@
 import { env } from "node:process";
 import { defineNuxtConfig } from "nuxt/config";
 
+import { loadFrontendRuntimeEnv } from "./utils/load-runtime-env";
 import { resolveFrontendRuntimeConfig } from "./utils/dev-runtime-config";
 
+loadFrontendRuntimeEnv();
 const runtimeConfig = resolveFrontendRuntimeConfig(env);
 
 export default defineNuxtConfig({

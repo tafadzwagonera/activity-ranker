@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
+import { loadBackendRuntimeEnv } from './load-runtime-env';
+import { applyLocalAuthDefaults } from './runtime-auth-defaults';
 
 /**
  * Builds the Nest application without binding a network listener.
@@ -20,6 +22,8 @@ export const createApp = async () => {
  * @returns A promise that resolves once the HTTP listener is active.
  */
 export async function bootstrap() {
+  loadBackendRuntimeEnv();
+  applyLocalAuthDefaults();
   const app = await createApp();
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
