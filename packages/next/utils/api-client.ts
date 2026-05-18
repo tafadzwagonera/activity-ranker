@@ -3,6 +3,24 @@ import type {
   RankedActivitiesResponse,
   TransportMode,
 } from "@activity-ranker/shared";
+import {
+  locationSuggestionSchema,
+  rankedActivitiesResponseSchema,
+} from "@activity-ranker/shared";
+
+const readJsonResponse = async <T>({
+  response,
+  schema,
+}: {
+  response: Response;
+  schema: { parse: (value: unknown) => T };
+}): Promise<T> => {
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}.`);
+  }
+
+  return schema.parse(await response.json());
+};
 
 /**
  * @param options Request inputs for browser-side rankings lookup.
@@ -53,7 +71,10 @@ export const fetchRankings = async ({
 }): Promise<RankedActivitiesResponse> => {
   const request = buildRankingsRequest({ latitude, longitude, transport });
   const response = await fetcher(request.url, { method: request.method });
-  return response.json() as Promise<RankedActivitiesResponse>;
+  return readJsonResponse({
+    response,
+    schema: rankedActivitiesResponseSchema,
+  });
 };
 
 /**
@@ -71,5 +92,8 @@ export const fetchSearchResults = async ({
 }): Promise<LocationSuggestion[]> => {
   const request = buildSearchRequest({ query, transport });
   const response = await fetcher(request.url, { method: request.method });
-  return response.json() as Promise<LocationSuggestion[]>;
+  return readJsonResponse({
+    response,
+    schema: locationSuggestionSchema.array(),
+  });
 };
