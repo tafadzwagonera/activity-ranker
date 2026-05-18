@@ -56,6 +56,26 @@ yarn install --non-interactive
 yarn lefthook install
 ```
 
+If `yarn install` prints repeated `There appears to be trouble with your network connection. Retrying...` lines, the most likely cause is a broken IPv6 path to `registry.yarnpkg.com`. Yarn Classic can hit the IPv6 address first and keep retrying even when IPv4 works. Force IPv4-first DNS resolution for the install:
+
+```bash
+NODE_OPTIONS=--dns-result-order=ipv4first yarn install --non-interactive
+```
+
+If that fixes it, add this to your shell profile before rerunning the normal setup flow:
+
+```bash
+export NODE_OPTIONS="--dns-result-order=ipv4first"
+```
+
+Quick verification commands:
+
+```bash
+node -p "require('node:dns').getDefaultResultOrder()"
+node -e "const https=require('https'); const opts={hostname:'registry.yarnpkg.com',family:6,path:'/'}; https.get(opts,res=>{console.log('ipv6 status',res.statusCode); res.resume();}).on('error',e=>console.error('ipv6 failed',e.code,e.message))"
+node -e "const https=require('https'); const opts={hostname:'registry.yarnpkg.com',family:4,path:'/'}; https.get(opts,res=>{console.log('ipv4 status',res.statusCode); res.resume();}).on('error',e=>console.error('ipv4 failed',e.code,e.message))"
+```
+
 ## Local ports and invocation patterns
 
 - `yarn dev:be` runs the Nest HTTP server directly, not `serverless offline`.

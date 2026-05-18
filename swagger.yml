@@ -12,6 +12,7 @@ info:
 
     Authentication:
     - Authenticated endpoints accept either `XApiKey` or `XInternalKey`
+    - Clients may optionally send `x-request-id`; the backend reuses it when present and echoes it in the response headers
 
     Shared response contract:
     - Ranking responses use `{ location, days }`
@@ -31,6 +32,19 @@ components:
       type: apiKey
       in: header
       name: XInternalKey
+  parameters:
+    RequestIdHeader:
+      in: header
+      name: x-request-id
+      required: false
+      description: Optional correlation ID that is echoed back in the response header and reused in structured logs.
+      schema:
+        type: string
+  headers:
+    RequestIdHeader:
+      description: Correlation ID for this request. Echoes the inbound `x-request-id` when provided, otherwise the backend generates one.
+      schema:
+        type: string
   schemas:
     LocationSuggestion:
       type: object
@@ -118,9 +132,14 @@ paths:
     get:
       summary: Service health
       description: Available without auth and intended for local Docker and Node/Yarn smoke checks.
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
       responses:
         "200":
           description: Healthy service
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
   /locations/search:
     get:
       summary: Search for a city or town
@@ -129,6 +148,7 @@ paths:
         - XApiKey: []
         - XInternalKey: []
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - in: query
           name: query
           required: true
@@ -137,6 +157,9 @@ paths:
       responses:
         "200":
           description: Matching location suggestions
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
@@ -145,6 +168,9 @@ paths:
                   $ref: "#/components/schemas/LocationSuggestion"
         "401":
           description: Missing or invalid API key
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
@@ -157,6 +183,7 @@ paths:
         - XApiKey: []
         - XInternalKey: []
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - in: path
           name: latitude
           required: true
@@ -170,6 +197,9 @@ paths:
       responses:
         "200":
           description: Ranked activities by day
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
@@ -191,12 +221,18 @@ paths:
                               - Matched nearby surf spot Muizenberg.
         "400":
           description: Invalid coordinates
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid API key
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
@@ -209,6 +245,7 @@ paths:
         - XApiKey: []
         - XInternalKey: []
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - in: path
           name: name
           required: true
@@ -217,6 +254,9 @@ paths:
       responses:
         "200":
           description: Ranked activities by day
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
@@ -240,12 +280,18 @@ paths:
                               - Dry morning and moderate wind speeds.
         "400":
           description: Location not found or invalid query
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
           description: Missing or invalid API key
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
@@ -257,6 +303,8 @@ paths:
       security:
         - XApiKey: []
         - XInternalKey: []
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
       requestBody:
         required: true
         content:
@@ -301,8 +349,14 @@ paths:
       responses:
         "200":
           description: GraphQL response envelope
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
         "401":
           description: Missing or invalid API key
+          headers:
+            x-request-id:
+              $ref: "#/components/headers/RequestIdHeader"
           content:
             application/json:
               schema:
